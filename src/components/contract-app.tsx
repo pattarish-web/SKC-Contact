@@ -70,8 +70,7 @@ export function ContractApp() {
   }
 
   function printContract() {
-    setPane("preview");
-    window.setTimeout(() => window.print(), 50);
+    window.open("/print", "_blank");
   }
 
   return (
@@ -157,7 +156,7 @@ export function ContractApp() {
               ตัวอย่างสัญญา
             </h2>
             <p className="text-xs text-muted-foreground">
-              2 หน้า · A4 · เมื่อพิมพ์เลือก “Save as PDF”
+              2 หน้า · A4 · กดพิมพ์จะเปิดหน้าสัญญาใหม่ แล้วเลือก Save as PDF
             </p>
           </div>
           <div className="preview-frame overflow-auto rounded-2xl border border-border bg-neutral-200/70 p-3 sm:p-6">
