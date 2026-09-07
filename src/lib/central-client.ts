@@ -99,7 +99,7 @@ function fetchGvizJsonp(sheetName?: string): Promise<SavedContract[]> {
     const sheetQuery = sheetName
       ? `&sheet=${encodeURIComponent(sheetName)}`
       : "";
-    script.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=${encodeURIComponent(`out:json;responseHandler:${callback}`)}${sheetQuery}&_=${Date.now()}`;
+    script.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=${encodeURIComponent(`out:json;responseHandler:${callback}`)}${sheetQuery}&headers=1&_=${Date.now()}`;
     document.body.appendChild(script);
   });
 }

@@ -35,7 +35,7 @@ export type SheetContract = {
 
 export function gvizUrl(sheetName?: string): string {
   const tqx = "out:json";
-  const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=${encodeURIComponent(tqx)}`;
+  const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=${encodeURIComponent(tqx)}&headers=1`;
   if (!sheetName) return base;
   return `${base}&sheet=${encodeURIComponent(sheetName)}`;
 }
@@ -59,7 +59,7 @@ export function parseGvizText(text: string): Record<string, string>[] {
   const cols = (parsed.table?.cols || []).map(
     (col, index) => col.label?.trim() || col.id || `col${index}`
   );
-  return (parsed.table?.rows || [])
+  const records = (parsed.table?.rows || [])
     .map((row) => {
       const object: Record<string, string> = {};
       (row.c || []).forEach((cell, index) => {
@@ -70,6 +70,23 @@ export function parseGvizText(text: string): Record<string, string>[] {
       return object;
     })
     .filter((row) => Object.values(row).some((value) => value.trim() !== ""));
+
+  if (records.length === 0) return records;
+  const firstValues = Object.values(records[0] || {});
+  const headerLike =
+    firstValues.includes("id") &&
+    (firstValues.includes("json") || firstValues.includes("contract_no"));
+  if (!headerLike) return records;
+
+  const keys = Object.keys(records[0] || {});
+  const names = keys.map((key) => records[0]?.[key] || key);
+  return records.slice(1).map((row) => {
+    const object: Record<string, string> = {};
+    keys.forEach((key, index) => {
+      object[names[index] || key] = row[key] || "";
+    });
+    return object;
+  });
 }
 
 export function rowToContract(row: Record<string, string>): SheetContract | null {
@@ -99,7 +116,7 @@ export function rowToContract(row: Record<string, string>): SheetContract | null
     }
   }
   const id = (row.id || "").trim();
-  if (!id) return null;
+  if (!id || id === "id") return null;
   return {
     id,
     inputs: {
