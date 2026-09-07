@@ -13,6 +13,8 @@ import {
   type AttachmentMeta,
   type SavedContract,
 } from "@/lib/contracts-db";
+import { writePrintPayload } from "@/lib/draft-store";
+import { appPath } from "@/lib/paths";
 import { formatThaiDate, formatUpdatedAt } from "@/lib/thai";
 import {
   Download,
@@ -21,6 +23,7 @@ import {
   FolderOpen,
   Paperclip,
   Pencil,
+  Printer,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -87,6 +90,22 @@ export function ContractReview({
     [selected]
   );
 
+  function printSelected() {
+    if (!selected) {
+      window.alert("เลือกสัญญาก่อนพิมพ์");
+      return;
+    }
+    writePrintPayload(selected.inputs);
+    const popup = window.open(
+      appPath("/print"),
+      "_blank",
+      "noopener,noreferrer"
+    );
+    if (!popup) {
+      window.location.assign(appPath("/print"));
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
     const timer = window.setTimeout(() => {
@@ -132,7 +151,7 @@ export function ContractReview({
                 รีวิวเอกสาร
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                ดูสัญญาที่บันทึกและเปิดไฟล์แนบได้โดยไม่ต้องเข้าโหมดแก้ไข
+                เลือกสัญญาเพื่อดู เปิดไฟล์แนบ หรือพิมพ์เป็น PDF โดยไม่ต้องเข้าโหมดแก้ไข
               </p>
             </div>
           </div>
@@ -145,6 +164,16 @@ export function ContractReview({
           >
             <FolderOpen data-icon="inline-start" />
             กลับคลังสัญญา
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            className="mt-2 w-full sm:w-auto"
+            disabled={!selected}
+            onClick={printSelected}
+          >
+            <Printer data-icon="inline-start" />
+            พิมพ์เอกสารที่เลือก
           </Button>
         </div>
 
@@ -216,14 +245,25 @@ export function ContractReview({
                     แก้ไขล่าสุด {formatUpdatedAt(selected.updatedAt)}
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => onEdit(selected.id)}
-                >
-                  <Pencil data-icon="inline-start" />
-                  เปิดแก้ไข
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={printSelected}
+                  >
+                    <Printer data-icon="inline-start" />
+                    พิมพ์ / PDF
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => onEdit(selected.id)}
+                  >
+                    <Pencil data-icon="inline-start" />
+                    เปิดแก้ไข
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -285,12 +325,30 @@ export function ContractReview({
             </div>
 
             <div className="rounded-2xl border border-border bg-white p-3 shadow-sm sm:p-4">
-              <h3 className="mb-3 px-1 text-sm font-semibold text-teal-950">
-                ตัวอย่างสัญญา
-              </h3>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1">
+                <h3 className="text-sm font-semibold text-teal-950">
+                  ตัวอย่างสัญญา
+                </h3>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-11 sm:h-7"
+                  onClick={printSelected}
+                >
+                  <Printer data-icon="inline-start" />
+                  พิมพ์เอกสารนี้
+                </Button>
+              </div>
               <div className="preview-frame overflow-auto rounded-xl border border-border bg-neutral-200/70 p-3 sm:p-6">
                 <ContractDocument ctx={ctx} />
               </div>
+            </div>
+            <div className="sticky bottom-0 z-20 -mx-4 border-t border-border bg-white/95 p-3 backdrop-blur sm:hidden">
+              <Button className="h-11 w-full" onClick={printSelected}>
+                <Printer data-icon="inline-start" />
+                พิมพ์เอกสารที่เลือก
+              </Button>
             </div>
           </>
         )}
