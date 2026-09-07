@@ -19,6 +19,10 @@ export type ContractInputs = {
   contractor_authorized: string;
   witness_client: string;
   witness_contractor: string;
+  client_tax_id: string;
+  client_email: string;
+  client_phone: string;
+  client_branch: string;
 };
 
 export type ContractContext = {
@@ -48,6 +52,10 @@ export type ContractContext = {
   witness_client: string;
   witness_contractor: string;
   include_equipment: boolean;
+  client_tax_id: string;
+  client_email: string;
+  client_phone: string;
+  client_branch: string;
 };
 
 export const STORAGE_KEY = "sanggan-clean-contract-draft";
@@ -92,6 +100,10 @@ export function emptyInputs(partial: Partial<ContractInputs> = {}): ContractInpu
     contractor_authorized: "",
     witness_client: "",
     witness_contractor: "",
+    client_tax_id: "",
+    client_email: "",
+    client_phone: "",
+    client_branch: "สำนักงานใหญ่",
     ...partial,
   };
 }
@@ -116,6 +128,10 @@ export const SAMPLE_INPUTS: ContractInputs = {
   contractor_authorized: "",
   witness_client: "",
   witness_contractor: "",
+  client_tax_id: "0105555555555",
+  client_email: "account@example-plaza.co.th",
+  client_phone: "02-111-2222",
+  client_branch: "สำนักงานใหญ่",
 };
 
 export const EQUIPMENT_INCLUDED =
@@ -170,6 +186,10 @@ export function buildContractContext(inputs: ContractInputs): ContractContext {
     witness_client: inputs.witness_client.trim(),
     witness_contractor: inputs.witness_contractor.trim(),
     include_equipment: inputs.include_equipment,
+    client_tax_id: inputs.client_tax_id.trim(),
+    client_email: inputs.client_email.trim(),
+    client_phone: inputs.client_phone.trim(),
+    client_branch: inputs.client_branch.trim() || "สำนักงานใหญ่",
   };
 }
 

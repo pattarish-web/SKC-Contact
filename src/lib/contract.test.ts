@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { buildContractContext, emptyInputs, SAMPLE_INPUTS } from "./contract";
 import {
+  buildClaudeMcpPrompt,
+  buildFlowAccountDocument,
+} from "./flowaccount";
+import {
   bahtText,
   endDateFromStart,
   formatThaiDate,
@@ -33,5 +37,24 @@ const excluded = buildContractContext(
   emptyInputs({ ...SAMPLE_INPUTS, include_equipment: false })
 );
 assert.match(excluded.equipment_clause, /ไม่รวมอุปกรณ์/);
+
+const quote = buildFlowAccountDocument(ctx, "quotation");
+assert.equal(quote.items[0].quantity, 12);
+assert.equal(quote.subTotal, 360000);
+assert.equal(quote.vatAmount, 25200);
+assert.equal(quote.grandTotal, 385200);
+assert.equal(quote.reference, "SC-2569-001");
+assert.equal(quote.isVat, true);
+assert.equal(quote.isVatInclusive, false);
+
+const bill = buildFlowAccountDocument(ctx, "billing-note");
+assert.equal(bill.items[0].quantity, 1);
+assert.equal(bill.subTotal, 30000);
+assert.equal(bill.vatAmount, 2100);
+
+const prompt = buildClaudeMcpPrompt(ctx, "quotation");
+assert.match(prompt, /ใบเสนอราคา/);
+assert.match(prompt, /บริษัท ตัวอย่าง พลาซ่า จำกัด/);
+assert.match(prompt, /360,000.00/);
 
 console.log("contract helpers ok");

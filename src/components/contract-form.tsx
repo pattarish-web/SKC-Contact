@@ -1,5 +1,6 @@
 "use client";
 
+import { FlowAccountPanel } from "@/components/flowaccount-panel";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -351,6 +352,13 @@ export function ContractForm({
           </p>
         ) : null}
       </section>
+
+      <FlowAccountPanel
+        inputs={inputs}
+        ctx={ctx}
+        onChange={onChange}
+        canCreate={Boolean(ctx.client_name) && ctx.monthly_total_raw > 0}
+      />
 
       <p className="text-center text-xs text-muted-foreground">
         ร่างสัญญาบันทึกอัตโนมัติในเบราว์เซอร์นี้
