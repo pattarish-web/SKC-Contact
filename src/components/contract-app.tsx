@@ -232,13 +232,21 @@ export function ContractApp() {
       await refreshLibrary();
       return;
     }
-    const renewal = buildRenewalInputs(row.inputs);
-    loadContractIntoDraft(null, renewal);
-    setView("editor");
-    setPane("form");
-    setSaveMessage(
-      `คัดลอกจาก ${row.inputs.contract_no || "สัญญาเดิม"} · ได้เลขที่ใหม่แล้ว ตรวจวันที่แล้วกดบันทึก`
-    );
+    try {
+      const renewal = buildRenewalInputs(row.inputs);
+      const saved = await saveContract(renewal);
+      loadContractIntoDraft(saved.id, saved.inputs);
+      await refreshLibrary();
+      setView("editor");
+      setPane("form");
+      setSaveMessage(
+        `คัดลอกต่อสัญญาจาก ${
+          row.inputs.contract_no || "สัญญาเดิม"
+        } → ${saved.inputs.contract_no} · ตรวจวันที่แล้วแก้ไขได้เลย`
+      );
+    } catch {
+      window.alert("คัดลอกสัญญาไม่สำเร็จ");
+    }
   }
 
   function startNew() {

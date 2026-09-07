@@ -36,7 +36,7 @@ export function ContractLibrary({
         <div>
           <h1 className="text-lg font-semibold text-teal-950">คลังสัญญา</h1>
           <p className="text-sm text-muted-foreground">
-            สัญญาที่บันทึกไว้เปิดดูและแก้ไขได้ตลอดในเบราว์เซอร์นี้
+            เปิดแก้ไขได้ตลอด หรือกด “คัดลอกต่อสัญญา” เมื่อลูกค้าต่ออายุสัญญา
           </p>
         </div>
         <Button onClick={onNew}>
@@ -73,7 +73,7 @@ export function ContractLibrary({
               key={item.id}
               className="rounded-xl border border-border bg-white p-4 shadow-sm"
             >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex flex-col gap-3">
                 <div className="min-w-0">
                   <p className="font-semibold text-teal-950">
                     {displayContractNo(item)}
@@ -91,21 +91,20 @@ export function ContractLibrary({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button
+                    size="sm"
+                    onClick={() => onDuplicate(item.id)}
+                    title="คัดลอกข้อมูลลูกค้าและออกเลขที่ใหม่เพื่อต่อสัญญา"
+                  >
+                    <Copy data-icon="inline-start" />
+                    คัดลอกต่อสัญญา
+                  </Button>
+                  <Button
                     variant="outline"
                     size="sm"
                     onClick={() => onOpen(item.id)}
                   >
                     <Pencil data-icon="inline-start" />
                     เปิดแก้ไข
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onDuplicate(item.id)}
-                    title="คัดลอกเพื่อต่อสัญญา"
-                  >
-                    <Copy data-icon="inline-start" />
-                    คัดลอกต่อสัญญา
                   </Button>
                   <Button
                     variant="destructive"
