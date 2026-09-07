@@ -30,7 +30,17 @@ export function packBlocks(blocks: PackBlock[], capacity: number): number[][] {
 
   blocks.forEach((block, index) => {
     const height = Math.max(0, block.height);
-    const needed = block.keepWithNext ? chainHeight(blocks, index) : height;
+    let needed = height;
+    if (block.keepWithNext) {
+      const chain = chainHeight(blocks, index);
+      if (chain <= limit) {
+        needed = chain;
+      } else {
+        const next = blocks[index + 1];
+        const pair = height + (next ? Math.max(0, next.height) : 0);
+        needed = pair <= limit ? pair : height;
+      }
+    }
     const fits = current.length === 0 || used + needed <= limit;
     if (!fits) pushPage();
     current.push(index);

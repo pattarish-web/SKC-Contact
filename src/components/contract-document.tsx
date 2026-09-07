@@ -144,8 +144,10 @@ function itemBlocks(
   if (columns === 2) {
     for (let index = 0; index < items.length; index += 2) {
       const row = items.slice(index, index + 2);
+      const lastRow = index + 2 >= items.length;
       nodes.push({
         key: `${prefix}-${index}`,
+        keepWithNext: !lastRow,
         node: (
           <ul className="checklist-two-col">
             {row.map((item, offset) => (
@@ -162,6 +164,7 @@ function itemBlocks(
   items.forEach((item, index) => {
     nodes.push({
       key: `${prefix}-${index}`,
+      keepWithNext: index < items.length - 1,
       node: (
         <p className="checklist-item">
           <span className="font-semibold">{item}</span>
@@ -355,6 +358,7 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
     },
     {
       key: "c4-1",
+      keepWithNext: true,
       node: (
         <p className="clause-sub">
           หากพนักงานประจำมาไม่ได้ ผู้รับจ้างมีเวลาจัดหาพนักงานทดแทนภายใน 3
@@ -364,6 +368,7 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
     },
     {
       key: "c4-2",
+      keepWithNext: true,
       node: (
         <p className="clause-sub">
           กรณีจัดหาพนักงานทดแทนไม่ได้เต็มวัน
@@ -375,6 +380,7 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
     },
     {
       key: "c4-3",
+      keepWithNext: true,
       node: (
         <p className="clause-sub">
           กรณีจัดหาพนักงานทดแทนได้แต่ล่าช้ากว่ากำหนด
@@ -384,6 +390,7 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
     },
     {
       key: "c4-4",
+      keepWithNext: true,
       node: (
         <p className="clause-sub">
           ผู้รับจ้างจะออกใบลดหนี้ (Credit Note)
@@ -502,6 +509,7 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
     },
     {
       key: "c13-1",
+      keepWithNext: true,
       node: (
         <p className="clause-sub">
           13.1 ผู้รับจ้างยินดีจะดูแลรักษาสถานที่หรือบริเวณทำความสะอาดของผู้ว่าจ้างให้สะอาดอยู่เสมอ
@@ -510,6 +518,7 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
     },
     {
       key: "c13-2",
+      keepWithNext: true,
       node: (
         <p className="clause-sub">
           13.2 ผู้รับจ้างได้จัดให้มีแบบฟอร์มพนักงาน มีตราสัญลักษณ์ของผู้รับจ้าง
@@ -519,6 +528,7 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
     },
     {
       key: "c13-3",
+      keepWithNext: true,
       node: (
         <p className="clause-sub">
           13.3 พนักงานของผู้รับจ้างจะต้องปฏิบัติตามระเบียบข้อบังคับที่ผู้ว่าจ้างกำหนด
@@ -527,6 +537,7 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
     },
     {
       key: "c13-4",
+      keepWithNext: true,
       node: (
         <p className="clause-sub">
           13.4 จัดหาและส่งพนักงานทำความสะอาดที่ดี ซื่อสัตย์
@@ -744,10 +755,12 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
     },
     {
       key: "a1-note-1",
+      keepWithNext: true,
       node: <p className="clause-sub">1. ราคาดังกล่าวยังไม่รวมภาษีมูลค่าเพิ่ม</p>,
     },
     {
       key: "a1-note-2",
+      keepWithNext: true,
       node: (
         <p className="clause-sub">
           2. กรณีพนักงานทำงานล่วงเวลาในวันทำงาน อัตราค่าบริการชั่วโมงละ{" "}

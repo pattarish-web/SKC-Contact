@@ -41,4 +41,15 @@ const closingCluster = packBlocks(
 );
 assert.deepEqual(closingCluster, [[0], [1, 2, 3]]);
 
+const shortList = packBlocks(
+  [
+    { height: 70 },
+    { height: 15, keepWithNext: true },
+    { height: 15, keepWithNext: true },
+    { height: 15 },
+  ],
+  100
+);
+assert.deepEqual(shortList, [[0], [1, 2, 3]]);
+
 console.log("paginate.test.ts: all assertions passed");
