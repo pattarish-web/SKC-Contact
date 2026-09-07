@@ -67,7 +67,6 @@ export function ContractApp() {
       ...SAMPLE_INPUTS,
       contract_no: nextContractNo(inputs.contract_no),
     });
-    setPane("preview");
   }
 
   function printContract() {
@@ -88,7 +87,7 @@ export function ContractApp() {
               จัดทำสัญญาบริการทำความสะอาด
             </p>
           </div>
-          <div className="hidden items-center gap-2 md:flex">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button variant="outline" size="sm" onClick={fillSample}>
               <Sparkles data-icon="inline-start" />
               ตัวอย่าง
@@ -139,7 +138,13 @@ export function ContractApp() {
             pane === "form" ? "block" : "hidden lg:block"
           }`}
         >
-          <ContractForm inputs={inputs} ctx={ctx} onChange={update} />
+          <ContractForm
+            inputs={inputs}
+            ctx={ctx}
+            onChange={update}
+            onFillSample={fillSample}
+            onReset={resetForm}
+          />
         </aside>
 
         <section

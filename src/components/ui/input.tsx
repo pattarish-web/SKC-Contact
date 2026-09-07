@@ -1,8 +1,15 @@
+"use client"
+
 import * as React from "react"
 import { Input as InputPrimitive } from "@base-ui/react/input"
 import { cn } from "cn"
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+function Input({
+  className,
+  type,
+  onChange,
+  ...props
+}: React.ComponentProps<"input">) {
   return (
     <InputPrimitive
       type={type}
@@ -12,6 +19,14 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
         className
       )}
       {...props}
+      onValueChange={(value) => {
+        if (!onChange) return
+        const event = {
+          target: { value },
+          currentTarget: { value },
+        } as React.ChangeEvent<HTMLInputElement>
+        onChange(event)
+      }}
     />
   )
 }

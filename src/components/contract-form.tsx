@@ -1,6 +1,7 @@
 "use client";
 
 import { FlowAccountPanel } from "@/components/flowaccount-panel";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,7 @@ import {
 } from "@/lib/contract";
 import { formatMoney } from "@/lib/thai";
 import { cn } from "cn";
+import { RotateCcw, Sparkles } from "lucide-react";
 
 function Field({
   label,
@@ -65,6 +67,8 @@ export function ContractForm({
   inputs,
   ctx,
   onChange,
+  onFillSample,
+  onReset,
 }: {
   inputs: ContractInputs;
   ctx: ContractContext;
@@ -72,9 +76,27 @@ export function ContractForm({
     key: K,
     value: ContractInputs[K]
   ) => void;
+  onFillSample?: () => void;
+  onReset?: () => void;
 }) {
   return (
     <div className="space-y-6">
+      {onFillSample || onReset ? (
+        <div className="flex gap-2">
+          {onFillSample ? (
+            <Button type="button" variant="outline" className="flex-1" onClick={onFillSample}>
+              <Sparkles data-icon="inline-start" />
+              ใส่ข้อมูลตัวอย่าง
+            </Button>
+          ) : null}
+          {onReset ? (
+            <Button type="button" variant="outline" className="flex-1" onClick={onReset}>
+              <RotateCcw data-icon="inline-start" />
+              ล้างฟอร์ม
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
       <section className="space-y-3">
         <h2 className="text-sm font-semibold tracking-wide text-teal-800">
           ข้อมูลสัญญา

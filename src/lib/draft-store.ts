@@ -24,12 +24,22 @@ function freshInputs(): ContractInputs {
   });
 }
 
+function compact(parsed: Partial<ContractInputs>): Partial<ContractInputs> {
+  const next: Partial<ContractInputs> = {};
+  (Object.keys(parsed) as Array<keyof ContractInputs>).forEach((key) => {
+    const value = parsed[key];
+    if (value === "" || value === undefined || value === null) return;
+    (next as Record<string, unknown>)[key] = value;
+  });
+  return next;
+}
+
 function readStorage(): ContractInputs {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return freshInputs();
     const parsed = JSON.parse(raw) as Partial<ContractInputs>;
-    return emptyInputs({ ...freshInputs(), ...parsed });
+    return emptyInputs({ ...freshInputs(), ...compact(parsed) });
   } catch {
     return freshInputs();
   }
@@ -69,7 +79,7 @@ export function writeDraft(next: ContractInputs) {
 export function clearDraft() {
   snapshot = freshInputs();
   if (typeof window !== "undefined") {
-    window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
   }
   emit();
 }
