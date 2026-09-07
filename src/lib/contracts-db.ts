@@ -249,6 +249,48 @@ export async function deleteAttachment(id: string): Promise<void> {
   await req(tx.objectStore(ATTACHMENTS_STORE).delete(id));
 }
 
+export async function listAllAttachments(): Promise<ContractAttachment[]> {
+  const db = await openDb();
+  const tx = db.transaction(ATTACHMENTS_STORE, "readonly");
+  return req<ContractAttachment[]>(tx.objectStore(ATTACHMENTS_STORE).getAll());
+}
+
+export async function replaceLibraryData(
+  contracts: SavedContract[],
+  attachments: ContractAttachment[]
+): Promise<void> {
+  const db = await openDb();
+  const clearTx = db.transaction(
+    [CONTRACTS_STORE, ATTACHMENTS_STORE],
+    "readwrite"
+  );
+  clearTx.objectStore(CONTRACTS_STORE).clear();
+  clearTx.objectStore(ATTACHMENTS_STORE).clear();
+  await new Promise<void>((resolve, reject) => {
+    clearTx.oncomplete = () => resolve();
+    clearTx.onerror = () =>
+      reject(clearTx.error ?? new Error("ล้างคลังเดิมไม่สำเร็จ"));
+  });
+
+  const writeTx = db.transaction(
+    [CONTRACTS_STORE, ATTACHMENTS_STORE],
+    "readwrite"
+  );
+  const contractsStore = writeTx.objectStore(CONTRACTS_STORE);
+  const attachmentsStore = writeTx.objectStore(ATTACHMENTS_STORE);
+  for (const row of contracts) {
+    contractsStore.put(row);
+  }
+  for (const row of attachments) {
+    attachmentsStore.put(row);
+  }
+  await new Promise<void>((resolve, reject) => {
+    writeTx.oncomplete = () => resolve();
+    writeTx.onerror = () =>
+      reject(writeTx.error ?? new Error("นำเข้าคลังสัญญาไม่สำเร็จ"));
+  });
+}
+
 export function formatBytes(size: number): string {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;

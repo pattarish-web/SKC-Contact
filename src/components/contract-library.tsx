@@ -4,7 +4,18 @@ import { Button } from "@/components/ui/button";
 import type { SavedContract } from "@/lib/contracts-db";
 import { normalizeContractNo } from "@/lib/contract";
 import { formatThaiDate } from "@/lib/thai";
-import { Copy, FilePlus2, FolderOpen, Pencil, Trash2 } from "lucide-react";
+import {
+  CloudUpload,
+  Copy,
+  Download,
+  FilePlus2,
+  FolderOpen,
+  Link2,
+  Pencil,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import { useRef } from "react";
 
 function displayContractNo(item: SavedContract): string {
   return (
@@ -17,19 +28,35 @@ export function ContractLibrary({
   items,
   loading,
   error,
+  syncId,
+  syncMessage,
   onNew,
   onOpen,
   onDuplicate,
   onDelete,
+  onExportFile,
+  onImportFile,
+  onCreateShareLink,
+  onCopyShareLink,
+  onPushCloud,
 }: {
   items: SavedContract[];
   loading: boolean;
   error: string | null;
+  syncId: string | null;
+  syncMessage: string | null;
   onNew: () => void;
   onOpen: (id: string) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
+  onExportFile: () => void;
+  onImportFile: (file: File) => void;
+  onCreateShareLink: () => void;
+  onCopyShareLink: () => void;
+  onPushCloud: () => void;
 }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+
   return (
     <div className="mx-auto max-w-4xl space-y-4 px-4 py-6 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -45,6 +72,84 @@ export function ContractLibrary({
         </Button>
       </div>
 
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-950">
+        <p className="font-medium">ข้อมูลคลังเก็บบนเครื่องนี้เป็นหลัก</p>
+        <p className="mt-1 text-xs leading-5 text-amber-900/90">
+          เปิดแค่ลิงก์เว็บอย่างเดียว เครื่องอื่นจะยังไม่เห็นสัญญา —
+          ให้กด “สร้างลิงก์ซิงก์” แล้วส่งลิงก์นั้น หรือส่งไฟล์คลังไปเปิดบนเครื่องอื่น
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            onClick={onCreateShareLink}
+            title="อัปโหลดคลังแล้วได้ลิงก์ให้เครื่องอื่นเปิดตาม"
+          >
+            <Link2 data-icon="inline-start" />
+            สร้างลิงก์ซิงก์
+          </Button>
+          {syncId ? (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={onCopyShareLink}
+              >
+                <Copy data-icon="inline-start" />
+                คัดลอกลิงก์ซิงก์
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={onPushCloud}
+              >
+                <CloudUpload data-icon="inline-start" />
+                อัปเดตคลังบนลิงก์
+              </Button>
+            </>
+          ) : null}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={onExportFile}
+          >
+            <Download data-icon="inline-start" />
+            ส่งออกไฟล์
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => fileRef.current?.click()}
+          >
+            <Upload data-icon="inline-start" />
+            นำเข้าไฟล์
+          </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onImportFile(file);
+              e.target.value = "";
+            }}
+          />
+        </div>
+        {syncId ? (
+          <p className="mt-2 break-all text-[11px] text-amber-900/80">
+            รหัสซิงก์: {syncId}
+          </p>
+        ) : null}
+        {syncMessage ? (
+          <p className="mt-2 text-xs font-medium text-teal-900">{syncMessage}</p>
+        ) : null}
+      </div>
+
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-950">
           {error}
@@ -58,9 +163,12 @@ export function ContractLibrary({
       ) : items.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-white px-4 py-10 text-center">
           <FolderOpen className="mx-auto size-8 text-teal-700/70" />
-          <p className="mt-3 text-sm font-medium text-teal-950">ยังไม่มีสัญญาที่บันทึก</p>
+          <p className="mt-3 text-sm font-medium text-teal-950">
+            ยังไม่มีสัญญาที่บันทึก
+          </p>
           <p className="mt-1 text-sm text-muted-foreground">
             สร้างสัญญาแล้วกด “บันทึกสัญญา” เพื่อเก็บไว้เปิดดูภายหลัง
+            หรือนำเข้าจากไฟล์/ลิงก์ซิงก์
           </p>
           <Button className="mt-4" onClick={onNew}>
             เริ่มสร้างสัญญา
