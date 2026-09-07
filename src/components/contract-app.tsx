@@ -4,6 +4,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { ContractDocument } from "@/components/contract-document";
 import { ContractForm } from "@/components/contract-form";
 import { ContractLibrary } from "@/components/contract-library";
+import { HomeBackButton } from "@/components/home-back-button";
 import { Button } from "@/components/ui/button";
 import { COMPANY } from "@/lib/company";
 import {
@@ -45,9 +46,7 @@ import {
 import { appPath } from "@/lib/paths";
 import { endDateFromStart, monthsFromRange, todayISO } from "@/lib/thai";
 import {
-  ArrowLeft,
   FileText,
-  FolderOpen,
   Printer,
   RotateCcw,
   Save,
@@ -420,11 +419,30 @@ export function ContractApp() {
     <div className="min-h-full bg-[oklch(0.97_0.01_175)]">
       <header className="no-print sticky top-0 z-20 border-b border-teal-900/10 bg-[oklch(0.99_0.01_175)]/90 backdrop-blur">
         <div className="mx-auto flex max-w-[1600px] items-center gap-3 px-4 py-3 sm:px-6">
-          <BrandMark />
+          <button
+            type="button"
+            className="shrink-0 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40"
+            onClick={() => {
+              void refreshLibrary();
+              setView("library");
+            }}
+            title="กลับหน้าแรก"
+            aria-label="กลับหน้าแรก"
+          >
+            <BrandMark />
+          </button>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-teal-950 sm:text-base">
+            <button
+              type="button"
+              className="block max-w-full truncate text-left text-sm font-semibold text-teal-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40 sm:text-base"
+              onClick={() => {
+                void refreshLibrary();
+                setView("library");
+              }}
+              title="กลับหน้าแรก"
+            >
               {COMPANY.shortName}
-            </p>
+            </button>
             <p className="truncate text-xs text-muted-foreground">
               {view === "library"
                 ? "คลังสัญญาที่บันทึกไว้"
@@ -434,17 +452,12 @@ export function ContractApp() {
           <div className="flex flex-wrap items-center justify-end gap-2">
             {view === "editor" ? (
               <>
-                <Button
-                  variant="outline"
-                  size="sm"
+                <HomeBackButton
                   onClick={() => {
                     void refreshLibrary();
                     setView("library");
                   }}
-                >
-                  <FolderOpen data-icon="inline-start" />
-                  คลังสัญญา
-                </Button>
+                />
                 <Button variant="outline" size="sm" onClick={fillSample}>
                   <Sparkles data-icon="inline-start" />
                   ตัวอย่าง
@@ -486,17 +499,13 @@ export function ContractApp() {
       ) : (
         <div className="app-shell mx-auto grid max-w-[1600px] grid-cols-1 gap-6 px-4 py-4 pb-28 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)] lg:items-start lg:px-6 lg:py-6 lg:pb-6">
           <div className="no-print flex gap-2 lg:hidden">
-            <Button
-              variant="outline"
+            <HomeBackButton
               className="flex-1"
               onClick={() => {
                 void refreshLibrary();
                 setView("library");
               }}
-            >
-              <ArrowLeft data-icon="inline-start" />
-              คลัง
-            </Button>
+            />
             <Button
               variant={pane === "form" ? "default" : "outline"}
               className="flex-1"

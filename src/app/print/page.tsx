@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ContractDocument } from "@/components/contract-document";
+import { HomeBackButton } from "@/components/home-back-button";
 import { buildContractContext, type ContractInputs } from "@/lib/contract";
 import { readPrintPayload } from "@/lib/draft-store";
 import { printClean } from "@/lib/print";
@@ -32,24 +33,38 @@ export default function PrintPage() {
 
   if (state.status === "loading") {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-white p-8 text-sm text-zinc-600">
-        กำลังเตรียมเอกสาร…
+      <main className="flex min-h-screen flex-col bg-white">
+        <div className="no-print sticky top-0 z-10 flex items-center gap-3 border-b border-zinc-200 bg-white/95 px-4 py-3">
+          <HomeBackButton />
+        </div>
+        <div className="flex flex-1 items-center justify-center p-8 text-sm text-zinc-600">
+          กำลังเตรียมเอกสาร…
+        </div>
       </main>
     );
   }
 
   if (state.status === "empty") {
     return (
-      <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center gap-4 bg-white p-8 text-center">
-        <h1 className="font-serif text-2xl text-zinc-900">
-          ไม่พบข้อมูลสัญญาสำหรับพิมพ์
-        </h1>
-        <p className="text-sm text-zinc-600">
-          กลับไปหน้าสร้างสัญญา แล้วกดปุ่มพิมพ์อีกครั้ง — ข้อมูลจะถูกส่งมาที่หน้านี้ชั่วคราว
-        </p>
-        <Button type="button" onClick={() => window.close()}>
-          ปิดหน้าต่าง
-        </Button>
+      <main className="mx-auto flex min-h-screen max-w-lg flex-col bg-white">
+        <div className="no-print sticky top-0 z-10 flex items-center gap-3 border-b border-zinc-200 bg-white/95 px-4 py-3">
+          <HomeBackButton />
+        </div>
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
+          <h1 className="font-serif text-2xl text-zinc-900">
+            ไม่พบข้อมูลสัญญาสำหรับพิมพ์
+          </h1>
+          <p className="text-sm text-zinc-600">
+            กลับไปหน้าสร้างสัญญา แล้วกดปุ่มพิมพ์อีกครั้ง —
+            ข้อมูลจะถูกส่งมาที่หน้านี้ชั่วคราว
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <HomeBackButton size="default" />
+            <Button type="button" variant="outline" onClick={() => window.close()}>
+              ปิดหน้าต่าง
+            </Button>
+          </div>
+        </div>
       </main>
     );
   }
@@ -59,14 +74,17 @@ export default function PrintPage() {
   return (
     <main className="print-root bg-white text-zinc-900">
       <div className="no-print sticky top-0 z-10 flex flex-col gap-2 border-b border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0 text-sm text-zinc-700">
-          <p>หากกล่องพิมพ์ไม่เปิดอัตโนมัติ ให้กดปุ่มพิมพ์ด้านขวา</p>
-          <p className="mt-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-950">
-            เพื่อเอา URL / วันที่ / ชื่อหน้า ออก: ในหน้าต่างพิมพ์เปิด More
-            settings แล้วปิด{" "}
-            <span className="font-semibold">Headers and footers</span>
-            {" "}(ส่วนหัวและส่วนท้าย)
-          </p>
+        <div className="flex min-w-0 items-start gap-3">
+          <HomeBackButton className="shrink-0" />
+          <div className="min-w-0 text-sm text-zinc-700">
+            <p>หากกล่องพิมพ์ไม่เปิดอัตโนมัติ ให้กดปุ่มพิมพ์ด้านขวา</p>
+            <p className="mt-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-950">
+              เพื่อเอา URL / วันที่ / ชื่อหน้า ออก: ในหน้าต่างพิมพ์เปิด More
+              settings แล้วปิด{" "}
+              <span className="font-semibold">Headers and footers</span>
+              {" "}(ส่วนหัวและส่วนท้าย)
+            </p>
+          </div>
         </div>
         <Button type="button" onClick={() => printClean()}>
           พิมพ์ / บันทึก PDF
