@@ -11,6 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ContractContext, ContractInputs } from "@/lib/contract";
 import {
+  DEFAULT_SOW_ELECTRICAL,
+  DEFAULT_SOW_SHARED_MATERIALS,
+  DEFAULT_SOW_TOOLS,
   POSITION_PRESETS,
   WORK_DAY_PRESETS,
   WORK_HOUR_PRESETS,
@@ -282,16 +285,57 @@ export function ContractForm({
             placeholder="เช่น ทำความสะอาดโถงทางเดิน ห้องน้ำ พื้นที่สำนักงาน ตามรอบเช้า-เย็น"
           />
         </Field>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              onChange("sow_tools", DEFAULT_SOW_TOOLS);
+              onChange("sow_electrical", DEFAULT_SOW_ELECTRICAL);
+              onChange("sow_shared_materials", DEFAULT_SOW_SHARED_MATERIALS);
+            }}
+          >
+            ใส่รายการมาตรฐาน (แยกเครื่องไฟฟ้า / วัสดุร่วม)
+          </Button>
+        </div>
         <Field
-          label="รายการอุปกรณ์ / น้ำยาทำความสะอาด"
-          htmlFor="sow_equipment"
+          label="2.1 อุปกรณ์ / เครื่องมือทั่วไป"
+          htmlFor="sow_tools"
+          hint="ไม้กวาด ม็อบ ถัง แปรง ฯลฯ — ไม่รวมเครื่องใช้ไฟฟ้า"
         >
           <Textarea
-            id="sow_equipment"
+            id="sow_tools"
+            rows={4}
+            value={inputs.sow_tools}
+            onChange={(e) => onChange("sow_tools", e.target.value)}
+            placeholder="เช่น ไม้ม็อบ ไม้กวาด ถังน้ำ ถุงมือ ป้ายเตือน"
+          />
+        </Field>
+        <Field
+          label="2.2 เครื่องใช้ไฟฟ้า"
+          htmlFor="sow_electrical"
+          hint="แยกหัวข้อชัดเจน — เครื่องดูดฝุ่น เครื่องขัดพื้น สายไฟ ฯลฯ"
+        >
+          <Textarea
+            id="sow_electrical"
             rows={3}
-            value={inputs.sow_equipment}
-            onChange={(e) => onChange("sow_equipment", e.target.value)}
-            placeholder="เช่น ไม้ถูพื้น ไม้กวาด น้ำยาทำความสะอาดพื้น ถุงมือ"
+            value={inputs.sow_electrical}
+            onChange={(e) => onChange("sow_electrical", e.target.value)}
+            placeholder="เช่น เครื่องดูดฝุ่น เครื่องดูดน้ำ เครื่องขัดพื้น สายไฟต่อพ่วง"
+          />
+        </Field>
+        <Field
+          label="2.3 วัสดุและน้ำยาที่ใช้ร่วมกัน"
+          htmlFor="sow_shared_materials"
+          hint="น้ำยา แผ่นขัด แอลกอฮอล์ ฯลฯ — วัสดุสิ้นเปลืองประจำวันดูที่ข้อถุงขยะ/กระดาษชำระ"
+        >
+          <Textarea
+            id="sow_shared_materials"
+            rows={4}
+            value={inputs.sow_shared_materials}
+            onChange={(e) => onChange("sow_shared_materials", e.target.value)}
+            placeholder="เช่น น้ำยาถูพื้น น้ำยาห้องน้ำ น้ำยาเช็ดกระจก แผ่นขัดพื้น"
           />
         </Field>
       </section>

@@ -55,7 +55,11 @@ export type ContractInputs = {
   ot_rate: string;
   holiday_rate: string;
   sow_scope: string;
-  sow_equipment: string;
+  /** @deprecated prefer sow_tools / sow_electrical / sow_shared_materials */
+  sow_equipment?: string;
+  sow_tools: string;
+  sow_electrical: string;
+  sow_shared_materials: string;
   contractor_authorized: string;
   contractor_position: string;
   witness_client: string;
@@ -87,6 +91,9 @@ export type ContractContext = {
   holiday_rate: string;
   sow_scope: string;
   sow_equipment: string;
+  sow_tools: string;
+  sow_electrical: string;
+  sow_shared_materials: string;
   monthly_total_raw: number;
   total_contract_price_raw: number;
   vat_amount: number;
@@ -497,6 +504,60 @@ function parseNumber(value: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+export const EQUIPMENT_INCLUDED =
+  "ค่าจ้างตามสัญญานี้รวมค่าแรงพนักงาน ค่าอุปกรณ์เครื่องมือเครื่องใช้น้ำยาทำความสะอาดต่างๆ และอื่นๆ สำหรับใช้ในการทำความสะอาดแล้ว";
+
+export const EQUIPMENT_EXCLUDED =
+  "ค่าจ้างตามสัญญานี้เป็นค่าแรงพนักงาน ไม่รวมอุปกรณ์เครื่องมือเครื่องใช้น้ำยาทำความสะอาด และวัสดุสิ้นเปลืองอื่นๆ";
+
+/** เครื่องมือทั่วไป (ไม่อาศัยไฟฟ้า) — อ้างอิงมาตรฐานสัญญาแม่บ้าน */
+export const DEFAULT_SOW_TOOLS = [
+  "ไม้กวาดอ่อน / ไม้กวาด กทม. / ไม้กวาดหยากไย่ / ไม้กวาดขนไก่พลาสติก",
+  "ที่ตักขยะ ถังน้ำ ขันน้ำ ถังซูเกอร์ ถังม็อบแบบมีที่บีบน้ำ",
+  "ไม้ม็อบ + ผ้าม็อบ (ขาว/น้ำเงิน) ไม้ดันฝุ่น + ผ้าดันฝุ่น",
+  "ไม้ปาดน้ำ ชุดเช็ดทำความสะอาดกระจก ฟ็อกกี้ (กระบอกฉีด)",
+  "แปรงขัดห้องน้ำ ที่ปั๊มห้องน้ำ แปรงซักผ้า แปรงถูกพื้นด้ามยาว เกรียงแซะ",
+  "สก๊อตไบร์ท + ฟองน้ำ ผ้าขนหนู / ผ้าไมโครไฟเบอร์ ผ้าเช็ดอเนกประสงค์",
+  "ถุงมือยาง ถุงมือผ้า รองเท้าบู๊ท ป้ายเตือนพื้นเปียก",
+  "บันไดพับ ฐานล้อเข็นขยะ + ถัง สายยางน้ำ รถเข็นแม่บ้าน (ถ้ามีในพื้นที่)",
+].join("\n");
+
+/** เครื่องใช้ไฟฟ้า — แยกหัวข้อชัดเจน */
+export const DEFAULT_SOW_ELECTRICAL = [
+  "เครื่องดูดฝุ่น",
+  "เครื่องดูดน้ำ (กรณีพื้นเปียก / ล้างพื้น)",
+  "เครื่องขัดพื้น 175 รอบ (ถ้าลักษณะงานต้องขัดพื้น)",
+  "เครื่องขัดพื้นความเร็วสูง / 1,500 รอบ (ถ้าลักษณะงานต้องเงาพื้น)",
+  "สายไฟต่อพ่วงมาตรฐาน พร้อมระบบตัดไฟรั่ว",
+].join("\n");
+
+/** วัสดุและน้ำยาที่ใช้ร่วมกันในการปฏิบัติงาน */
+export const DEFAULT_SOW_SHARED_MATERIALS = [
+  "น้ำยาอเนกประสงค์ (เช่น T-Pol) น้ำยาถูพื้นประจำวัน น้ำยาล้างห้องน้ำ / ฆ่าเชื้อดับกลิ่น",
+  "น้ำยาเช็ดกระจก น้ำยาเช็ดเฟอร์นิเจอร์ / หนัง น้ำมันดักฝุ่น",
+  "น้ำยาเคลือบเงาพื้น / แว็กซ์ และน้ำยาลอกแว็กซ์ (เมื่อมีงานเคลือบพื้น)",
+  "แผ่นขัดพื้น (เช่น 3M ขาว / แดง / ดำ ขนาดตามเครื่อง) เมื่อใช้เครื่องขัด",
+  "แอลกอฮอล์ทำความสะอาด สำลี / ผ้าเช็ดฆ่าเชื้อ ผงซักฟอก (ซักผ้าม็อบ/ผ้าเช็ด)",
+  "หมายเหตุวัสดุสิ้นเปลืองประจำวัน (ถุงขยะ กระดาษชำระ ฯลฯ) ให้ดูข้อวัสดุสิ้นเปลืองในสัญญาและเอกสารแนบท้าย 1",
+].join("\n");
+
+export function normalizeSowFields(
+  partial: Partial<ContractInputs> | null | undefined
+): Pick<
+  ContractInputs,
+  "sow_scope" | "sow_tools" | "sow_electrical" | "sow_shared_materials"
+> & { sow_equipment: string } {
+  const legacy = (partial?.sow_equipment || "").trim();
+  const tools = (partial?.sow_tools || "").trim() || legacy;
+  return {
+    sow_scope: (partial?.sow_scope || "").trim(),
+    sow_tools: tools,
+    sow_electrical: (partial?.sow_electrical || "").trim(),
+    sow_shared_materials: (partial?.sow_shared_materials || "").trim(),
+    sow_equipment: tools,
+  };
+}
+
 export function emptyInputs(partial: Partial<ContractInputs> = {}): ContractInputs {
   const { consumables, staff_roles, staff_count, price_per_head, ...rest } =
     partial;
@@ -516,6 +577,9 @@ export function emptyInputs(partial: Partial<ContractInputs> = {}): ContractInpu
     ot_rate: "109",
     holiday_rate: "800",
     sow_scope: "",
+    sow_tools: "",
+    sow_electrical: "",
+    sow_shared_materials: "",
     sow_equipment: "",
     contractor_authorized: "",
     contractor_position: "กรรมการผู้มีอำนาจ",
@@ -528,8 +592,10 @@ export function emptyInputs(partial: Partial<ContractInputs> = {}): ContractInpu
       price_per_head,
     }),
   };
+  const sow = normalizeSowFields(base);
   return {
     ...base,
+    ...sow,
     contract_no: normalizeContractNo(base.contract_no, base.contract_date),
   };
 }
@@ -570,9 +636,10 @@ export function buildSampleInputs(contractNo?: string): ContractInputs {
     ot_rate: "109",
     holiday_rate: "800",
     sow_scope:
-      "ทำความสะอาดพื้นที่ส่วนกลาง ห้องน้ำ โถงทางเดิน และพื้นที่สำนักงานตามรอบที่ตกลง",
-    sow_equipment:
-      "ไม้ถูพื้น ไม้กวาด ถังน้ำ น้ำยาทำความสะอาดพื้น น้ำยาถูพื้น ถุงมือ",
+      "ทำความสะอาดพื้นที่ส่วนกลาง ห้องน้ำ โถงทางเดิน และพื้นที่สำนักงานตามรอบที่ตกลง รวมทั้งพื้นที่เตรียมเครื่องดื่ม/ตู้เย็นตามที่ระบุในขอบเขตงาน",
+    sow_tools: DEFAULT_SOW_TOOLS,
+    sow_electrical: DEFAULT_SOW_ELECTRICAL,
+    sow_shared_materials: DEFAULT_SOW_SHARED_MATERIALS,
     contractor_authorized: "ตัวอย่าง ผู้รับจ้าง",
     contractor_position: "ผู้จัดการ",
   });
@@ -580,12 +647,6 @@ export function buildSampleInputs(contractNo?: string): ContractInputs {
 
 /** @deprecated use buildSampleInputs() */
 export const SAMPLE_INPUTS = buildSampleInputs("SC-2569-09-001");
-
-export const EQUIPMENT_INCLUDED =
-  "ค่าจ้างตามสัญญานี้รวมค่าแรงพนักงาน ค่าอุปกรณ์เครื่องมือเครื่องใช้น้ำยาทำความสะอาดต่างๆ และอื่นๆ สำหรับใช้ในการทำความสะอาดแล้ว";
-
-export const EQUIPMENT_EXCLUDED =
-  "ค่าจ้างตามสัญญานี้เป็นค่าแรงพนักงาน ไม่รวมอุปกรณ์เครื่องมือเครื่องใช้น้ำยาทำความสะอาด และวัสดุสิ้นเปลืองอื่นๆ";
 
 export function buildContractContext(inputs: ContractInputs): ContractContext {
   const staff_roles = normalizeStaffRoles(inputs.staff_roles, {
@@ -617,6 +678,7 @@ export function buildContractContext(inputs: ContractInputs): ContractContext {
 
   const consumables = normalizeConsumables(inputs.consumables);
   const consumable_lines = buildConsumableLines(consumables);
+  const sow = normalizeSowFields(inputs);
 
   const equipment_clause = inputs.include_equipment
     ? EQUIPMENT_INCLUDED
@@ -647,8 +709,11 @@ export function buildContractContext(inputs: ContractInputs): ContractContext {
     total_price_text: bahtText(total_contract_price_raw),
     ot_rate: inputs.ot_rate.trim() || "109",
     holiday_rate: inputs.holiday_rate.trim() || "800",
-    sow_scope: inputs.sow_scope.trim(),
-    sow_equipment: inputs.sow_equipment.trim(),
+    sow_scope: sow.sow_scope,
+    sow_equipment: sow.sow_equipment || "",
+    sow_tools: sow.sow_tools,
+    sow_electrical: sow.sow_electrical,
+    sow_shared_materials: sow.sow_shared_materials,
     monthly_total_raw,
     total_contract_price_raw,
     vat_amount,

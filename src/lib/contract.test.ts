@@ -2,12 +2,15 @@ import assert from "node:assert/strict";
 import {
   buildContractContext,
   buildSampleInputs,
+  DEFAULT_SOW_ELECTRICAL,
+  DEFAULT_SOW_SHARED_MATERIALS,
   emptyInputs,
   formatQuantityPhrase,
   getConsumableKind,
   isQtyCompatibleWithKind,
   missingRequiredFields,
   normalizeContractNo,
+  normalizeSowFields,
   normalizeStaffRoles,
 } from "./contract";
 import {
@@ -181,6 +184,13 @@ assert.equal(isQtyCompatibleWithKind("10 ใบ/เดือน", "toilet_paper"
 assert.equal(formatQuantityPhrase("20", "trash_bags"), "20 ใบ/เดือน");
 assert.equal(formatQuantityPhrase("2", "toilet_paper"), "2 แพ็ค/เดือน");
 assert.equal(formatQuantityPhrase("1", "chemical"), "1 ขวด/เดือน");
+
+const sow = normalizeSowFields({
+  sow_equipment: "ไม้กวาด ถังน้ำ",
+});
+assert.equal(sow.sow_tools, "ไม้กวาด ถังน้ำ");
+assert.match(DEFAULT_SOW_ELECTRICAL, /เครื่องดูดฝุ่น/);
+assert.match(DEFAULT_SOW_SHARED_MATERIALS, /น้ำยา/);
 
 const incomplete = emptyInputs({ client_name: "x" });
 assert.ok(missingRequiredFields(incomplete).includes("เลขที่สัญญา"));
