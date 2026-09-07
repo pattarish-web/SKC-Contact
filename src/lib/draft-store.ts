@@ -139,6 +139,22 @@ export function clearDraft(savedNos: readonly string[] = []) {
   });
 }
 
+/** Patch contract_no on the active draft when a saved record was renumbered. */
+export function patchActiveDraftContractNo(
+  contractId: string,
+  contractNo: string
+) {
+  if (snapshot.activeId !== contractId) return;
+  if (snapshot.inputs.contract_no === contractNo) return;
+  writeDraft(
+    {
+      ...snapshot.inputs,
+      contract_no: contractNo,
+    },
+    contractId
+  );
+}
+
 /** Refresh provisional number on an unsaved draft from the saved library. */
 export function syncUnsavedDraftContractNo(savedNos: readonly string[]) {
   if (snapshot.activeId) return;

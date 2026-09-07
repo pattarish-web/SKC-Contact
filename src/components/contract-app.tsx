@@ -20,12 +20,14 @@ import {
   deleteContract,
   getContract,
   listContracts,
+  renumberSavedContractsFromOne,
   saveContract,
   type SavedContract,
 } from "@/lib/contracts-db";
 import {
   clearDraft,
   loadContractIntoDraft,
+  patchActiveDraftContractNo,
   setActiveContractId,
   syncUnsavedDraftContractNo,
   useContractDraft,
@@ -94,7 +96,10 @@ export function ContractApp() {
   const refreshLibrary = useCallback(async () => {
     setLibraryLoading(true);
     try {
-      const rows = await listContracts();
+      const { rows, plan } = await renumberSavedContractsFromOne();
+      for (const item of plan) {
+        patchActiveDraftContractNo(item.id, item.to);
+      }
       const nos = savedNosOf(rows);
       reconcileSeqFromSaved(nos);
       syncUnsavedDraftContractNo(nos);
@@ -112,8 +117,11 @@ export function ContractApp() {
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
-          const rows = await listContracts();
+          const { rows, plan } = await renumberSavedContractsFromOne();
           if (!cancelled) {
+            for (const item of plan) {
+              patchActiveDraftContractNo(item.id, item.to);
+            }
             const nos = savedNosOf(rows);
             reconcileSeqFromSaved(nos);
             syncUnsavedDraftContractNo(nos);

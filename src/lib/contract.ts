@@ -888,6 +888,48 @@ export function reconcileSeqFromSaved(savedNos: readonly string[]): SeqState {
   return next;
 }
 
+export type ContractRenumberPlan = {
+  id: string;
+  from: string;
+  to: string;
+};
+
+/**
+ * Plan contiguous SC-ปี-เดือน-ลำดับ starting at 001 for each year/month,
+ * ordered by createdAt (oldest → 001).
+ */
+export function planContractRenumber(
+  rows: ReadonlyArray<{
+    id: string;
+    createdAt: number;
+    contract_no: string;
+    contract_date: string;
+  }>
+): ContractRenumberPlan[] {
+  const sorted = [...rows].sort((a, b) => {
+    if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
+    return a.id.localeCompare(b.id);
+  });
+
+  const counters = new Map<string, number>();
+  const plan: ContractRenumberPlan[] = [];
+
+  for (const row of sorted) {
+    const year = yearFromDateISO(row.contract_date);
+    const month = monthFromDateISO(row.contract_date);
+    const key = `${year}-${String(month).padStart(2, "0")}`;
+    const seq = (counters.get(key) ?? 0) + 1;
+    counters.set(key, seq);
+    const to = formatContractNo(year, month, seq);
+    const from = row.contract_no.trim();
+    if (from !== to) {
+      plan.push({ id: row.id, from, to });
+    }
+  }
+
+  return plan;
+}
+
 /**
  * Upgrade legacy SC-YYYY-NNN → SC-YYYY-MM-NNN using contract/create month.
  * Leaves modern numbers unchanged. Does not advance the sequence counter.

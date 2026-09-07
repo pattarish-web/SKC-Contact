@@ -14,6 +14,7 @@ import {
   normalizeSowFields,
   normalizeStaffRoles,
   peekNextContractNo,
+  planContractRenumber,
 } from "./contract";
 import {
   bahtText,
@@ -201,10 +202,25 @@ assert.equal(
   "SC-2569-09-014"
 );
 assert.equal(peekNextContractNo("2026-09-07", []), "SC-2569-09-001");
-assert.equal(
-  peekNextContractNo("2026-09-07", ["SC-2569-09-010"]),
-  peekNextContractNo("2026-09-07", ["SC-2569-09-010"])
-);
+
+const renumberPlan = planContractRenumber([
+  {
+    id: "b",
+    createdAt: 200,
+    contract_no: "SC-2569-09-013",
+    contract_date: "2026-09-07",
+  },
+  {
+    id: "a",
+    createdAt: 100,
+    contract_no: "SC-2569-09-010",
+    contract_date: "2026-09-07",
+  },
+]);
+assert.deepEqual(renumberPlan, [
+  { id: "a", from: "SC-2569-09-010", to: "SC-2569-09-001" },
+  { id: "b", from: "SC-2569-09-013", to: "SC-2569-09-002" },
+]);
 
 const incomplete = emptyInputs({ client_name: "x" });
 assert.ok(missingRequiredFields(incomplete).includes("เลขที่สัญญา"));

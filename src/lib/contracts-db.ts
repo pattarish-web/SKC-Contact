@@ -1,6 +1,10 @@
 "use client";
 
-import type { ContractInputs } from "@/lib/contract";
+import {
+  planContractRenumber,
+  type ContractInputs,
+  type ContractRenumberPlan,
+} from "@/lib/contract";
 
 const DB_NAME = "sanggan-clean-contracts-db";
 const DB_VERSION = 1;
@@ -67,6 +71,67 @@ export async function listContracts(): Promise<SavedContract[]> {
   const store = tx.objectStore(CONTRACTS_STORE);
   const rows = await req<SavedContract[]>(store.getAll());
   return rows.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+/**
+ * Renumber every saved contract so each year/month starts at 001
+ * (oldest createdAt first). Preserves createdAt/updatedAt.
+ */
+export async function renumberSavedContractsFromOne(): Promise<{
+  changed: number;
+  rows: SavedContract[];
+  plan: ContractRenumberPlan[];
+}> {
+  const db = await openDb();
+  const readTx = db.transaction(CONTRACTS_STORE, "readonly");
+  const existing = await req<SavedContract[]>(
+    readTx.objectStore(CONTRACTS_STORE).getAll()
+  );
+
+  const plan = planContractRenumber(
+    existing.map((row) => ({
+      id: row.id,
+      createdAt: row.createdAt,
+      contract_no: row.inputs.contract_no || "",
+      contract_date: row.inputs.contract_date || "",
+    }))
+  );
+
+  if (plan.length === 0) {
+    return {
+      changed: 0,
+      rows: existing.sort((a, b) => b.updatedAt - a.updatedAt),
+      plan,
+    };
+  }
+
+  const nextNoById = new Map(plan.map((item) => [item.id, item.to]));
+  const writeTx = db.transaction(CONTRACTS_STORE, "readwrite");
+  const store = writeTx.objectStore(CONTRACTS_STORE);
+
+  for (const row of existing) {
+    const nextNo = nextNoById.get(row.id);
+    if (!nextNo) continue;
+    const updated: SavedContract = {
+      ...row,
+      inputs: {
+        ...row.inputs,
+        contract_no: nextNo,
+      },
+    };
+    store.put(updated);
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    writeTx.oncomplete = () => resolve();
+    writeTx.onerror = () =>
+      reject(writeTx.error ?? new Error("เรียงเลขที่สัญญาไม่สำเร็จ"));
+    writeTx.onabort = () =>
+      reject(writeTx.error ?? new Error("เรียงเลขที่สัญญาถูกยกเลิก"));
+  });
+
+  const rows = await listContracts();
+  return { changed: plan.length, rows, plan };
 }
 
 export async function getContract(id: string): Promise<SavedContract | null> {
