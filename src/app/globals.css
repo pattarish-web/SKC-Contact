@@ -322,10 +322,30 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.3em;
+  white-space: nowrap;
 }
 
-.sign-dots {
-  letter-spacing: 0.06em;
+.sign-fish {
+  display: inline-block;
+  width: 9.5rem;
+  height: 1.05em;
+  flex: 0 0 9.5rem;
+  border-bottom: 1.5px dotted #171717;
+  vertical-align: bottom;
+}
+
+.sign-fish-wide {
+  width: 12.5rem;
+  flex-basis: 12.5rem;
+}
+
+.sign-fish-inline {
+  width: 8.5rem;
+  min-width: 7rem;
+  max-width: 100%;
+  flex: none;
+  vertical-align: baseline;
 }
 
 .sign-company,

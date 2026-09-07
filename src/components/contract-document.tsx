@@ -23,14 +23,14 @@ function Fill({
   }
   return (
     <span
-      className={cn(
-        "inline-block min-w-[7rem] border-b border-dotted border-neutral-400 text-transparent",
-        className
-      )}
-    >
-      {fallback}
-    </span>
+      className={cn("sign-fish sign-fish-inline", className)}
+      title={fallback}
+    />
   );
+}
+
+function SignBlank({ wide = false }: { wide?: boolean }) {
+  return <span className={cn("sign-fish", wide && "sign-fish-wide")} />;
 }
 
 function SignLine({
@@ -52,22 +52,12 @@ function SignLine({
         <span className="sign-ink-role">{role}</span>
       </p>
       <p className="sign-name">
-        (
-        {name?.trim() ? (
-          <span className="font-semibold"> {name} </span>
-        ) : (
-          <span className="sign-dots"> ................................ </span>
-        )}
+        ({name?.trim() ? <span className="font-semibold"> {name} </span> : <SignBlank wide />}
         )
       </p>
       <p className="sign-company">{company?.trim() ? company : "\u00a0"}</p>
       <p className="sign-position">
-        ตำแหน่ง{" "}
-        {position?.trim() ? (
-          <span className="font-semibold">{position}</span>
-        ) : (
-          <span className="sign-dots">........................</span>
-        )}
+        ตำแหน่ง {position?.trim() ? <span className="font-semibold">{position}</span> : <SignBlank />}
       </p>
     </div>
   );
