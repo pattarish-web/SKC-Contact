@@ -46,30 +46,27 @@ function SignLine({
 }) {
   return (
     <div className="sign-line">
-      <p className="sign-ink flex w-full items-end justify-center gap-1">
-        <span>ลงชื่อ</span>
-        <span className="inline-block h-[1.15em] w-[9rem] border-b border-neutral-800" />
-        <span>{role}</span>
+      <p className="sign-ink">
+        <span className="sign-ink-label">ลงชื่อ</span>
+        <span className="sign-rule" aria-hidden />
+        <span className="sign-ink-role">{role}</span>
       </p>
       <p className="sign-name">
-        ({" "}
+        (
         {name?.trim() ? (
-          <span className="font-semibold">{name}</span>
+          <span className="font-semibold"> {name} </span>
         ) : (
-          <span>................................</span>
-        )}{" "}
+          <span className="sign-dots"> ................................ </span>
+        )}
         )
       </p>
       <p className="sign-company">{company?.trim() ? company : "\u00a0"}</p>
       <p className="sign-position">
+        ตำแหน่ง{" "}
         {position?.trim() ? (
-          <>
-            ตำแหน่ง <span className="font-semibold">{position}</span>
-          </>
+          <span className="font-semibold">{position}</span>
         ) : (
-          <>
-            ตำแหน่ง <span>....................</span>
-          </>
+          <span className="sign-dots">........................</span>
         )}
       </p>
     </div>
@@ -79,19 +76,23 @@ function SignLine({
 function SignatureBlock({ ctx }: { ctx: ContractContext }) {
   return (
     <div className="contract-sign-block">
-      <SignLine
-        role="ผู้ว่าจ้าง"
-        name={ctx.client_authorized}
-        position={ctx.client_position}
-      />
-      <SignLine
-        role="ผู้รับจ้าง"
-        name={ctx.contractor_authorized}
-        company={COMPANY.name}
-        position={ctx.contractor_position || "ผู้มีอำนาจลงนาม"}
-      />
-      <SignLine role="พยานฝ่ายผู้ว่าจ้าง" name={ctx.witness_client} />
-      <SignLine role="พยานฝ่ายผู้รับจ้าง" name={ctx.witness_contractor} />
+      <div className="sign-pair">
+        <SignLine
+          role="ผู้ว่าจ้าง"
+          name={ctx.client_authorized}
+          position={ctx.client_position}
+        />
+        <SignLine
+          role="ผู้รับจ้าง"
+          name={ctx.contractor_authorized}
+          company={COMPANY.name}
+          position={ctx.contractor_position || "ผู้มีอำนาจลงนาม"}
+        />
+      </div>
+      <div className="sign-pair">
+        <SignLine role="พยานฝ่ายผู้ว่าจ้าง" name={ctx.witness_client} />
+        <SignLine role="พยานฝ่ายผู้รับจ้าง" name={ctx.witness_contractor} />
+      </div>
     </div>
   );
 }
