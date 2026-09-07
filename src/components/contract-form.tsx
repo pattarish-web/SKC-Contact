@@ -295,47 +295,7 @@ export function ContractForm({
             placeholder="เช่น ทำความสะอาดโถงทางเดิน ห้องน้ำ พื้นที่สำนักงาน ตามรอบเช้า-เย็น"
           />
         </Field>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              onChange("sow_tools", DEFAULT_SOW_TOOLS);
-              onChange("sow_electrical", DEFAULT_SOW_ELECTRICAL);
-              onChange("sow_shared_materials", DEFAULT_SOW_SHARED_MATERIALS);
-            }}
-          >
-            ติ๊กรายการมาตรฐานทั้งหมด
-          </Button>
-        </div>
-        <SowChecklist
-          label="2.1 อุปกรณ์ / เครื่องมือทั่วไป"
-          hint="ไม้กวาด ม็อบ ถัง แปรง ฯลฯ — ไม่รวมเครื่องใช้ไฟฟ้า"
-          options={SOW_TOOL_OPTIONS}
-          value={inputs.sow_tools}
-          onChange={(next) => onChange("sow_tools", next)}
-        />
-        <SowChecklist
-          label="2.2 เครื่องใช้ไฟฟ้า"
-          hint="เครื่องดูดฝุ่น เครื่องขัดพื้น สายไฟ ฯลฯ"
-          options={SOW_ELECTRICAL_OPTIONS}
-          value={inputs.sow_electrical}
-          onChange={(next) => onChange("sow_electrical", next)}
-        />
-        <SowChecklist
-          label="2.3 วัสดุและน้ำยาที่ใช้ร่วมกัน"
-          hint="วัสดุสิ้นเปลืองประจำวัน (ถุงขยะ/กระดาษชำระ) ดูที่ข้อวัสดุสิ้นเปลืองด้านล่าง"
-          options={SOW_SHARED_MATERIAL_OPTIONS}
-          value={inputs.sow_shared_materials}
-          onChange={(next) => onChange("sow_shared_materials", next)}
-        />
-      </section>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold tracking-wide text-teal-800">
-          เงื่อนไขข้อ 6 — อุปกรณ์
-        </h2>
         <label className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 p-3">
           <Checkbox
             checked={inputs.include_equipment}
@@ -349,8 +309,62 @@ export function ContractForm({
             <span className="mt-1 block text-muted-foreground">
               {ctx.equipment_clause}
             </span>
+            {!inputs.include_equipment ? (
+              <span className="mt-1 block text-amber-800">
+                ไม่รวมอุปกรณ์ — จะไม่แสดงรายการให้เลือกในข้อ 2
+              </span>
+            ) : null}
           </span>
         </label>
+
+        {inputs.include_equipment ? (
+          <>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onChange("sow_tools", DEFAULT_SOW_TOOLS);
+                  onChange("sow_electrical", DEFAULT_SOW_ELECTRICAL);
+                  onChange(
+                    "sow_shared_materials",
+                    DEFAULT_SOW_SHARED_MATERIALS
+                  );
+                }}
+              >
+                ติ๊กรายการมาตรฐานทั้งหมด
+              </Button>
+            </div>
+            <SowChecklist
+              label="2.1 อุปกรณ์ / เครื่องมือทั่วไป"
+              hint="ไม้กวาด ม็อบ ถัง แปรง ฯลฯ — ไม่รวมเครื่องใช้ไฟฟ้า"
+              options={SOW_TOOL_OPTIONS}
+              value={inputs.sow_tools}
+              onChange={(next) => onChange("sow_tools", next)}
+            />
+            <SowChecklist
+              label="2.2 เครื่องใช้ไฟฟ้า"
+              hint="เครื่องดูดฝุ่น เครื่องขัดพื้น สายไฟ ฯลฯ"
+              options={SOW_ELECTRICAL_OPTIONS}
+              value={inputs.sow_electrical}
+              onChange={(next) => onChange("sow_electrical", next)}
+            />
+            <SowChecklist
+              label="2.3 วัสดุและน้ำยาที่ใช้ร่วมกัน"
+              hint="วัสดุสิ้นเปลืองประจำวัน (ถุงขยะ/กระดาษชำระ) ดูที่ข้อวัสดุสิ้นเปลืองด้านล่าง"
+              options={SOW_SHARED_MATERIAL_OPTIONS}
+              value={inputs.sow_shared_materials}
+              onChange={(next) => onChange("sow_shared_materials", next)}
+            />
+          </>
+        ) : null}
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold tracking-wide text-teal-800">
+          วัสดุสิ้นเปลือง
+        </h2>
         <ConsumablesPanel
           items={inputs.consumables}
           onChange={(items) => onChange("consumables", items)}
