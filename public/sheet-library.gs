@@ -1,6 +1,9 @@
 /**
  * คลังสัญญา สั่งการ คลีน — วางใน Extensions > Apps Script ของชีต
  * Deploy เป็น Web app: Execute as Me, Who has access = Anyone
+ *
+ * ถ้าต้องการกันคนนอกเขียน ให้ตั้ง Script property ชื่อ WRITE_TOKEN
+ * แล้ววางรหัสเดียวกันในหน้าตั้งค่าคลังของแอป
  */
 var SHEET_ID = "1Os1IdvKUPhuzBS0o765T3W_vnllgr_x03lfgfta2Tow";
 var SHEET_NAME = "สัญญา";
@@ -20,6 +23,25 @@ var HEADERS = [
   "updatedAt",
   "json",
 ];
+
+function writeToken_() {
+  try {
+    return String(
+      PropertiesService.getScriptProperties().getProperty("WRITE_TOKEN") || ""
+    ).trim();
+  } catch (error) {
+    return "";
+  }
+}
+
+function assertToken_(data) {
+  var expected = writeToken_();
+  if (!expected) return;
+  var got = data && data.token ? String(data.token).trim() : "";
+  if (got !== expected) {
+    throw new Error("รหัสเขียนคลังไม่ตรง");
+  }
+}
 
 function getSheet_() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
@@ -85,21 +107,33 @@ function listContracts_() {
   var contracts = [];
   for (var i = 0; i < values.length; i++) {
     var raw = values[i][13];
-    if (!raw) continue;
-    try {
-      contracts.push(JSON.parse(String(raw)));
-    } catch (error) {
-      contracts.push({
-        id: String(values[i][0] || ""),
-        inputs: {
-          contract_no: String(values[i][1] || ""),
-          client_name: String(values[i][3] || ""),
-        },
-        createdAt: Number(values[i][11]) || Date.now(),
-        updatedAt: Number(values[i][12]) || Date.now(),
-        notes: String(values[i][10] || ""),
-      });
+    var id = String(values[i][0] || "");
+    if (!id) continue;
+    if (raw) {
+      try {
+        contracts.push(JSON.parse(String(raw)));
+        continue;
+      } catch (error) {
+        // fall through to columns
+      }
     }
+    contracts.push({
+      id: id,
+      inputs: {
+        contract_no: String(values[i][1] || ""),
+        contract_date: String(values[i][2] || ""),
+        client_name: String(values[i][3] || ""),
+        client_address: String(values[i][4] || ""),
+        client_authorized: String(values[i][5] || ""),
+        client_position: String(values[i][6] || ""),
+        start_date: String(values[i][7] || ""),
+        end_date: String(values[i][8] || ""),
+        contract_months: String(values[i][9] || ""),
+      },
+      createdAt: Number(values[i][11]) || Date.now(),
+      updatedAt: Number(values[i][12]) || Date.now(),
+      notes: String(values[i][10] || ""),
+    });
   }
   return { version: 1, updatedAt: Date.now(), contracts: contracts };
 }
@@ -144,11 +178,16 @@ function doPost(e) {
   lock.waitLock(30000);
   try {
     var data = JSON.parse(e.postData.contents);
+    assertToken_(data);
     var sheet = getSheet_();
     var action = data.action;
     if (action === "list") return json_(listContracts_());
     if (action === "save") {
       upsert_(sheet, data.payload);
+      var removeIds = data.removeIds || [];
+      for (var i = 0; i < removeIds.length; i++) {
+        if (removeIds[i]) delete_(sheet, removeIds[i]);
+      }
       return json_(listContracts_());
     }
     if (action === "delete") {

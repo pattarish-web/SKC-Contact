@@ -15,6 +15,7 @@ import {
 } from "@/lib/contracts-db";
 import { writePrintPayload } from "@/lib/draft-store";
 import { appPath } from "@/lib/paths";
+import { openPrintWindow } from "@/lib/print";
 import { formatThaiDate, formatUpdatedAt } from "@/lib/thai";
 import {
   Download,
@@ -96,14 +97,7 @@ export function ContractReview({
       return;
     }
     writePrintPayload(selected.inputs);
-    const popup = window.open(
-      appPath("/print"),
-      "_blank",
-      "noopener,noreferrer"
-    );
-    if (!popup) {
-      window.location.assign(appPath("/print"));
-    }
+    openPrintWindow(appPath("/print"));
   }
 
   useEffect(() => {
@@ -148,7 +142,7 @@ export function ContractReview({
             <FileSearch className="mt-0.5 size-5 text-teal-800" />
             <div className="min-w-0">
               <h1 className="text-lg font-semibold text-teal-950">
-                รีวิวเอกสาร
+                ดูเอกสาร
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 เลือกสัญญาเพื่อดู เปิดไฟล์แนบ หรือพิมพ์เป็น PDF โดยไม่ต้องเข้าโหมดแก้ไข
@@ -165,6 +159,27 @@ export function ContractReview({
             <FolderOpen data-icon="inline-start" />
             กลับคลังสัญญา
           </Button>
+          <label className="mt-3 block lg:hidden">
+            <span className="mb-1 block text-xs font-medium text-teal-900">
+              เลือกสัญญา
+            </span>
+            <select
+              className="h-11 w-full rounded-lg border border-border bg-white px-3 text-sm"
+              value={selectedId || ""}
+              onChange={(event) => setPickedId(event.target.value || null)}
+            >
+              {items.length === 0 ? (
+                <option value="">ยังไม่มีสัญญา</option>
+              ) : (
+                items.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {displayContractNo(item)} ·{" "}
+                    {item.inputs.client_name || "ยังไม่ระบุผู้ว่าจ้าง"}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
           <Button
             type="button"
             size="sm"
@@ -177,7 +192,7 @@ export function ContractReview({
           </Button>
         </div>
 
-        <div className="rounded-2xl border border-border bg-white shadow-sm">
+        <div className="hidden rounded-2xl border border-border bg-white shadow-sm lg:block">
           <div className="border-b border-border px-4 py-3 text-sm font-medium text-teal-950">
             สัญญาทั้งหมด ({items.length})
           </div>
@@ -226,7 +241,7 @@ export function ContractReview({
       <section className="space-y-4">
         {!selected || !ctx ? (
           <div className="rounded-2xl border border-dashed border-border bg-white px-4 py-16 text-center text-sm text-muted-foreground">
-            เลือกสัญญาจากรายการด้านซ้ายเพื่อรีวิว
+            เลือกสัญญาจากรายการเพื่อดูเอกสาร
           </div>
         ) : (
           <>
@@ -234,7 +249,7 @@ export function ContractReview({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-medium uppercase tracking-wide text-teal-800">
-                    กำลังรีวิว
+                    กำลังดูเอกสาร
                   </p>
                   <h2 className="mt-1 truncate text-lg font-semibold text-teal-950">
                     {displayContractNo(selected)}
@@ -274,6 +289,9 @@ export function ContractReview({
                   เอกสารแนบ ({attachments.length})
                 </h3>
               </div>
+              <p className="mb-3 text-xs text-muted-foreground">
+                ไฟล์แนบอยู่เฉพาะเครื่องนี้ ไม่ตามไปเครื่องอื่น
+              </p>
               {attachError ? (
                 <p className="text-sm text-red-700">{attachError}</p>
               ) : null}
@@ -329,16 +347,6 @@ export function ContractReview({
                 <h3 className="text-sm font-semibold text-teal-950">
                   ตัวอย่างสัญญา
                 </h3>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-11 sm:h-7"
-                  onClick={printSelected}
-                >
-                  <Printer data-icon="inline-start" />
-                  พิมพ์เอกสารนี้
-                </Button>
               </div>
               <div className="preview-frame overflow-auto rounded-xl border border-border bg-neutral-200/70 p-3 sm:p-6">
                 <ContractDocument ctx={ctx} />

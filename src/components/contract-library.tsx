@@ -32,6 +32,7 @@ export function ContractLibrary({
   error,
   liveHint,
   liveConnected,
+  pendingSync,
   onNew,
   onOpen,
   onDuplicate,
@@ -45,6 +46,7 @@ export function ContractLibrary({
   error: string | null;
   liveHint?: string | null;
   liveConnected?: boolean;
+  pendingSync?: boolean;
   onNew: () => void;
   onOpen: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -59,24 +61,25 @@ export function ContractLibrary({
     <div className="mx-auto max-w-4xl space-y-4 px-4 py-6 sm:px-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-teal-950">คลังกลาง</h1>
+          <h1 className="text-lg font-semibold text-teal-950">คลังสัญญา</h1>
           <p className="text-sm text-muted-foreground">
-            มี {items.length} สัญญาใน Google Sheet · ทุกเครื่องเห็นชุดเดียวกัน
+            มี {items.length} สัญญาในคลัง · ทุกเครื่องเห็นชุดเดียวกัน
           </p>
           <p
             className={`mt-1 flex items-center gap-1 text-xs font-medium ${
               liveConnected ? "text-teal-800" : "text-amber-800"
             }`}
+            aria-live="polite"
           >
             {liveConnected ? (
               <Radio className="size-3.5" />
             ) : (
               <WifiOff className="size-3.5" />
             )}
-            {liveHint ||
-              (liveConnected
-                ? "เชื่อมคลังกลางแล้ว"
-                : "กำลังต่อคลังกลาง…")}
+            {pendingSync
+              ? "มีงานค้างส่งขึ้นชีต — รายการในเครื่องนี้ยังไม่หาย"
+              : liveHint ||
+                (liveConnected ? "เชื่อมคลังสัญญาแล้ว" : "กำลังต่อคลังสัญญา…")}
           </p>
         </div>
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
@@ -84,7 +87,7 @@ export function ContractLibrary({
             type="button"
             size="sm"
             variant="outline"
-            className="h-11 w-full justify-center sm:h-7 sm:w-auto"
+            className="h-11 w-full justify-center sm:h-9 sm:w-auto"
             onClick={onExportFile}
             title="สำรองคลังเป็นไฟล์"
           >
@@ -95,7 +98,7 @@ export function ContractLibrary({
             type="button"
             size="sm"
             variant="outline"
-            className="h-11 w-full justify-center sm:h-7 sm:w-auto"
+            className="h-11 w-full justify-center sm:h-9 sm:w-auto"
             onClick={() => fileRef.current?.click()}
             title="นำเข้าจากไฟล์สำรอง"
           >
@@ -126,8 +129,6 @@ export function ContractLibrary({
         </div>
       ) : null}
 
-      <SheetSetup />
-
       {loading ? (
         <div className="rounded-xl border border-dashed border-border bg-white px-4 py-10 text-center text-sm text-muted-foreground">
           กำลังโหลดคลังสัญญา…
@@ -153,7 +154,11 @@ export function ContractLibrary({
               className="rounded-xl border border-border bg-white p-4 shadow-sm"
             >
               <div className="flex flex-col gap-3">
-                <div className="min-w-0">
+                <button
+                  type="button"
+                  className="min-w-0 text-left"
+                  onClick={() => onOpen(item.id)}
+                >
                   <p className="font-semibold text-teal-950">
                     {displayContractNo(item)}
                   </p>
@@ -166,40 +171,40 @@ export function ContractLibrary({
                     {" · "}
                     แก้ไขล่าสุด {formatUpdatedAt(item.updatedAt)}
                   </p>
-                </div>
+                </button>
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                   <Button
                     size="sm"
-                    variant="outline"
-                    className="h-11 justify-center sm:h-7"
-                    onClick={() => onReview(item.id)}
-                    title="รีวิวสัญญาและไฟล์แนบ"
-                  >
-                    <Eye data-icon="inline-start" />
-                    รีวิว
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="h-11 justify-center sm:h-7"
-                    onClick={() => onDuplicate(item.id)}
-                    title="คัดลอกข้อมูลลูกค้าและออกเลขที่ใหม่เพื่อต่อสัญญา"
-                  >
-                    <Copy data-icon="inline-start" />
-                    คัดลอกต่อสัญญา
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-11 justify-center sm:h-7"
+                    className="h-11 justify-center sm:h-9"
                     onClick={() => onOpen(item.id)}
                   >
                     <Pencil data-icon="inline-start" />
-                    เปิดแก้ไข
+                    เปิด
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-11 justify-center sm:h-9"
+                    onClick={() => onDuplicate(item.id)}
+                    title="คัดลอกข้อมูลลูกค้าและออกเลขที่ใหม่เพื่อต่ออายุ"
+                  >
+                    <Copy data-icon="inline-start" />
+                    ต่ออายุ
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-11 justify-center sm:h-9"
+                    onClick={() => onReview(item.id)}
+                    title="ดูสัญญาและไฟล์แนบโดยไม่ต้องแก้ไข"
+                  >
+                    <Eye data-icon="inline-start" />
+                    ดูเอกสาร
                   </Button>
                   <Button
                     size="sm"
                     variant="destructive"
-                    className="h-11 justify-center sm:h-7"
+                    className="h-11 justify-center sm:h-9"
                     onClick={() => onDelete(item.id)}
                   >
                     <Trash2 data-icon="inline-start" />
@@ -211,6 +216,8 @@ export function ContractLibrary({
           ))}
         </ul>
       )}
+
+      <SheetSetup />
     </div>
   );
 }

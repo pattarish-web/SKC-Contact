@@ -3,6 +3,7 @@ import { COMPANY } from "@/lib/company";
 import type { ContractContext } from "@/lib/contract";
 import { formatThaiDate } from "@/lib/thai";
 import { cn } from "cn";
+import type { ReactNode } from "react";
 
 function Fill({
   value,
@@ -41,36 +42,31 @@ function SignLine({
   position?: string;
 }) {
   return (
-    <div className="sign-line flex min-w-[220px] flex-1 flex-col items-center text-center">
-      <p className="w-full">
-        ลงชื่อ
-        <span className="mx-1 inline-block min-w-[11rem] border-b border-neutral-800">
-          &nbsp;
-        </span>
-        {role}
+    <div className="sign-line">
+      <p className="sign-ink flex w-full items-end justify-center gap-1">
+        <span>ลงชื่อ</span>
+        <span className="inline-block h-[1.15em] w-[9rem] border-b border-neutral-800" />
+        <span>{role}</span>
       </p>
-      <p className="mt-1">
+      <p className="sign-name">
         ({" "}
         {name?.trim() ? (
           <span className="font-semibold">{name}</span>
         ) : (
-          <span className="inline-block min-w-[10rem]">
-            .............................................
-          </span>
+          <span>................................</span>
         )}{" "}
         )
       </p>
-      {company ? (
-        <p className="mt-0.5 text-[12.5px] font-medium">{company}</p>
-      ) : null}
-      <p className="mt-0.5 text-[12.5px]">
-        ตำแหน่ง{" "}
+      <p className="sign-company">{company?.trim() ? company : "\u00a0"}</p>
+      <p className="sign-position">
         {position?.trim() ? (
-          <span className="font-semibold">{position}</span>
+          <>
+            ตำแหน่ง <span className="font-semibold">{position}</span>
+          </>
         ) : (
-          <span className="inline-block min-w-[8rem] border-b border-dotted border-neutral-400">
-            &nbsp;
-          </span>
+          <>
+            ตำแหน่ง <span>....................</span>
+          </>
         )}
       </p>
     </div>
@@ -79,30 +75,20 @@ function SignLine({
 
 function SignatureBlock({ ctx }: { ctx: ContractContext }) {
   return (
-    <div className="contract-sign-block mt-8 space-y-8">
-      <div className="flex flex-col gap-8 sm:flex-row sm:justify-between">
-        <SignLine
-          role="ผู้ว่าจ้าง"
-          name={ctx.client_authorized}
-          position={ctx.client_position}
-        />
-        <SignLine
-          role="ผู้รับจ้าง"
-          name={ctx.contractor_authorized}
-          company={COMPANY.name}
-          position={ctx.contractor_position || "ผู้มีอำนาจลงนาม"}
-        />
-      </div>
-      <div className="flex flex-col gap-8 sm:flex-row sm:justify-between">
-        <SignLine
-          role="พยานฝ่ายผู้ว่าจ้าง"
-          name={ctx.witness_client}
-        />
-        <SignLine
-          role="พยานฝ่ายผู้รับจ้าง"
-          name={ctx.witness_contractor}
-        />
-      </div>
+    <div className="contract-sign-block">
+      <SignLine
+        role="ผู้ว่าจ้าง"
+        name={ctx.client_authorized}
+        position={ctx.client_position}
+      />
+      <SignLine
+        role="ผู้รับจ้าง"
+        name={ctx.contractor_authorized}
+        company={COMPANY.name}
+        position={ctx.contractor_position || "ผู้มีอำนาจลงนาม"}
+      />
+      <SignLine role="พยานฝ่ายผู้ว่าจ้าง" name={ctx.witness_client} />
+      <SignLine role="พยานฝ่ายผู้รับจ้าง" name={ctx.witness_contractor} />
     </div>
   );
 }
@@ -110,31 +96,28 @@ function SignatureBlock({ ctx }: { ctx: ContractContext }) {
 function ContractHeader({
   title,
   subtitle,
+  right,
 }: {
   title: string;
   subtitle?: string;
+  right?: ReactNode;
 }) {
   return (
-    <header className="border-b-2 border-teal-800 pb-3">
-      <div className="flex items-start gap-3">
-        <BrandMark variant="contract" className="mt-0.5" />
-        <div className="min-w-0 flex-1 text-center">
-          <p className="text-[11px] tracking-wide text-teal-800">
-            {COMPANY.name}
-          </p>
-          <h1 className="mt-1 text-[20px] font-bold leading-tight tracking-wide sm:text-[22px]">
-            {title}
-          </h1>
-          {subtitle ? (
-            <p className="mt-1 text-[13px] text-neutral-700">{subtitle}</p>
-          ) : null}
+    <header className="contract-header">
+      <div className="flex items-center justify-between gap-4">
+        <BrandMark variant="contract" />
+        <div className="min-w-[11rem] text-right text-[12.5px] leading-snug">
+          {right}
         </div>
-        {/* spacer so title stays centered opposite the logo */}
-        <div
-          aria-hidden
-          className="invisible hidden h-10 w-[11.5rem] shrink-0 sm:block sm:h-11 sm:w-[13rem] print:block print:h-9 print:w-[11rem]"
-        />
       </div>
+      <h1 className="mt-3 text-center text-[20px] font-bold leading-tight tracking-wide sm:text-[21px]">
+        {title}
+      </h1>
+      {subtitle ? (
+        <p className="mt-1 text-center text-[13px] text-neutral-700">
+          {subtitle}
+        </p>
+      ) : null}
     </header>
   );
 }
@@ -205,20 +188,25 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
     <div id="contract-print" className="contract-print-root">
       <div className="contract-sheet">
       <article className="contract-page">
-        <ContractHeader title="สัญญาบริการทำความสะอาด" />
+        <ContractHeader
+          title="สัญญาบริการทำความสะอาด"
+          right={
+            <>
+              <p>
+                สัญญาเลขที่ <Fill value={ctx.contract_no} />
+              </p>
+              <p>
+                วันที่ <Fill value={contractDate} />
+              </p>
+            </>
+          }
+        />
 
-        <div className="mt-4 flex flex-col gap-1 text-[13.5px] sm:flex-row sm:items-start sm:justify-between">
-          <p>
-            ทำที่: {COMPANY.madeAt}
-            <br />
-            <span className="text-[12.5px]">{COMPANY.address}</span>
-          </p>
-          <p className="sm:text-right">
-            สัญญาเลขที่ <Fill value={ctx.contract_no} />
-            <br />
-            วันที่ <Fill value={contractDate} />
-          </p>
-        </div>
+        <p className="mt-3 text-[13px] leading-snug">
+          ทำที่ {COMPANY.madeAt}
+          <br />
+          <span className="text-[12.5px] text-neutral-700">{COMPANY.address}</span>
+        </p>
 
         <p className="contract-indent mt-4">สัญญาฉบับนี้ทำขึ้นระหว่าง</p>
         <p className="contract-indent">
@@ -398,7 +386,14 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
 
       <div className="contract-sheet">
       <article className="contract-page">
-        <ContractHeader title="เอกสารแนบท้ายสัญญา 1" />
+        <ContractHeader
+          title="เอกสารแนบท้ายสัญญา 1"
+          right={
+            <p>
+              สัญญาเลขที่ <Fill value={ctx.contract_no} />
+            </p>
+          }
+        />
 
         <p className="mt-4">
           หน่วยงาน: <Fill value={ctx.client_name} />
@@ -538,7 +533,12 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
       <article className="contract-page">
         <ContractHeader
           title="เอกสารแนบท้ายสัญญา 2"
-          subtitle="ขอบเขตงาน (Scope of Work) และรายการอุปกรณ์/น้ำยาทำความสะอาด"
+          subtitle="ขอบเขตงานและรายการอุปกรณ์/น้ำยาทำความสะอาด"
+          right={
+            <p>
+              สัญญาเลขที่ <Fill value={ctx.contract_no} />
+            </p>
+          }
         />
 
         <p className="mt-4">

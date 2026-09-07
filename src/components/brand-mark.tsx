@@ -19,13 +19,13 @@ export function BrandMark({
     // eslint-disable-next-line @next/next/no-img-element -- static export + print-friendly
     <img
       src={LOGO_SRC}
-      alt="Sangkan Clean"
+      alt="สั่งการ คลีน"
       width={1026}
       height={173}
       className={cn(
         "shrink-0 object-contain object-left",
         isContract
-          ? "h-10 w-auto max-w-[11.5rem] sm:h-11 sm:max-w-[13rem] print:h-9 print:max-w-[11rem]"
+          ? "h-9 w-auto max-w-[10.5rem] sm:h-10 sm:max-w-[12rem] print:h-8 print:max-w-[10rem]"
           : "h-8 w-auto max-w-[9.5rem] sm:h-9 sm:max-w-[11rem]",
         className
       )}

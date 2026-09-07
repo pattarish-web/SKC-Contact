@@ -73,14 +73,17 @@ assert.deepEqual(summarize(findings), {
 });
 
 const staticIds = sourceFindings().map((f) => f.id);
-assert.ok(staticIds.includes("logic-cloud-unauth-write"));
-assert.ok(staticIds.includes("logic-print-noopener"));
+assert.ok(staticIds.includes("logic-pending-poll"));
+assert.ok(staticIds.includes("logic-sheet-unauth-write"));
+assert.ok(staticIds.includes("logic-print-payload"));
+assert.ok(!staticIds.includes("logic-cloud-unauth-write"));
 
 const uiIds = uiPassFindings().map((f) => f.id);
 assert.ok(uiIds.includes("ui-print-works"));
 assert.ok(uiIds.includes("ui-empty-library"));
-assert.ok(uiIds.includes("ui-mobile-desktop-layout"));
-assert.ok(uiIds.includes("ui-epoch-date-2513"));
+assert.ok(uiIds.includes("ui-mobile-library"));
+assert.ok(uiIds.includes("ui-epoch-date"));
+assert.ok(!uiIds.includes("ui-mobile-desktop-layout"));
 
 const epochThai = new Date(0).toLocaleString("th-TH");
 assert.match(epochThai, /2513|1970/);

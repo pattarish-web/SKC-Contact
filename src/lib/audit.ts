@@ -50,7 +50,6 @@ export type AuditReport = {
 };
 
 const UA = "SKC-ErrorChecker/1.0 (+https://github.com/pattarish-web/SKC-Contact)";
-const CLOUD_API = "https://extendsclass.com/api/json-storage/bin";
 
 export function normalizeTarget(raw: string): string {
   const trimmed = raw.trim() || DEFAULT_TARGET;
@@ -200,19 +199,19 @@ export async function runAudit(targetInput = DEFAULT_TARGET): Promise<AuditRepor
   probes.push(home);
 
   const printUrl = new URL("print/", target).toString();
-  const syncUrl = new URL("sync-config.json", target).toString();
+  const scriptUrl = new URL("sheet-library.gs", target).toString();
   const logoUrl = new URL("logo-sangkan-clean.png", target).toString();
   const iconUrl = new URL("icon.svg", target).toString();
   const missingUrl = new URL("__missing-audit-probe__.js", target).toString();
 
-  const [printPage, syncConfig, logo, icon, missing] = await Promise.all([
+  const [printPage, sheetScript, logo, icon, missing] = await Promise.all([
     probe(printUrl, { includeText: true }),
-    probe(syncUrl, { includeText: true }),
+    probe(scriptUrl, { includeText: true, maxText: 20_000 }),
     probe(logoUrl),
     probe(iconUrl, { includeText: true }),
     probe(missingUrl),
   ]);
-  probes.push(printPage, syncConfig, logo, icon, missing);
+  probes.push(printPage, sheetScript, logo, icon, missing);
 
   if (!home.ok || !home.text) {
     findings.push({
@@ -412,135 +411,49 @@ export async function runAudit(targetInput = DEFAULT_TARGET): Promise<AuditRepor
     }
   }
 
-  let syncId: string | null = null;
-  if (syncConfig.ok && syncConfig.text) {
-    try {
-      const parsed = parseSyncConfig(syncConfig.text);
-      syncId = parsed.syncId || null;
-      if (syncId) {
-        findings.push({
-          id: "sync-config-ok",
-          category: "sync",
-          severity: "pass",
-          title: "พบ sync-config.json",
-          detail: `คลังร่วมชี้ไปที่รหัส ${syncId} (${parsed.provider || "ไม่ระบุผู้ให้บริการ"})`,
-          evidence: syncConfig.text.trim(),
-        });
-      } else {
-        findings.push({
-          id: "sync-config-empty",
-          category: "sync",
-          severity: "high",
-          title: "sync-config.json ไม่มี syncId",
-          detail: "เครื่องใหม่จะไม่มีคลังร่วม",
-          fix: "ใส่ syncId ของถัง JSON ที่ใช้จริง",
-        });
-      }
-    } catch (error) {
-      findings.push({
-        id: "sync-config-invalid",
+  if (sheetScript.ok && sheetScript.text) {
+    const script = sheetScript.text;
+    findings.push({
+      id: "sheet-script-ok",
+      category: "sync",
+      severity: "pass",
+      title: "พบสคริปต์คลัง Google Sheet",
+      detail: `โหลด sheet-library.gs ได้ ${sheetScript.bytes.toLocaleString()} ไบต์`,
+    });
+    add(
+      findings,
+      {
+        id: "sheet-script-pending",
         category: "sync",
-        severity: "high",
-        title: "sync-config.json อ่านไม่ได้",
-        detail: error instanceof Error ? error.message : String(error),
-        evidence: syncConfig.text.slice(0, 200),
-      });
-    }
+        severity: "pass",
+        title: "สคริปต์รองรับลบเลขซ้ำตอนบันทึก",
+        detail: "doPost รับ removeIds เพื่อลบแถวซ้ำบนชีต",
+      },
+      script.includes("removeIds")
+    );
+    add(
+      findings,
+      {
+        id: "sheet-script-token",
+        category: "security",
+        severity: "info",
+        title: "สคริปต์รองรับรหัสเขียน WRITE_TOKEN",
+        detail:
+          "ถ้าตั้ง Script property ชื่อ WRITE_TOKEN การบันทึกต้องส่งรหัสเดียวกันจากหน้าตั้งค่าคลัง",
+        fix: "ตั้ง WRITE_TOKEN ใน Apps Script แล้ววางรหัสในแอปถ้าต้องการกันคนนอกเขียน",
+      },
+      script.includes("WRITE_TOKEN")
+    );
   } else {
     findings.push({
-      id: "sync-config-missing",
+      id: "sheet-script-missing",
       category: "sync",
-      severity: "high",
-      title: "ไม่พบ /sync-config.json",
-      detail: "แอปจะผูกคลังร่วมไม่สำเร็จบน GitHub Pages",
-      evidence: syncConfig.error || `HTTP ${syncConfig.status}`,
+      severity: "medium",
+      title: "ไม่พบ /sheet-library.gs",
+      detail: "ปุ่มคัดลอกสคริปต์ในหน้าคลังจะใช้ไม่ได้",
+      evidence: sheetScript.error || `HTTP ${sheetScript.status}`,
+      fix: "deploy ไฟล์ public/sheet-library.gs ด้วย",
     });
-  }
-
-  if (syncId) {
-    const bin = await probe(`${CLOUD_API}/${encodeURIComponent(syncId)}`, {
-      includeText: true,
-    });
-    probes.push(bin);
-
-    const options = await probe(`${CLOUD_API}/${encodeURIComponent(syncId)}`, {
-      method: "OPTIONS",
-      headers: {
-        Origin: originOf(target),
-        "Access-Control-Request-Method": "PUT",
-        "Access-Control-Request-Headers": "content-type",
-      },
-    });
-    probes.push(options);
-
-    if (!bin.ok || !bin.text) {
-      findings.push({
-        id: "cloud-down",
-        category: "sync",
-        severity: "high",
-        title: "คลังคลาวด์เรียกไม่ได้",
-        detail: "ซิงก์ข้ามเครื่องจะล้มเหลว",
-        evidence: bin.error || `HTTP ${bin.status}`,
-        fix: "ตรวจ extendsclass.com หรือย้ายไปที่เก็บที่มี auth",
-      });
-    } else {
-      try {
-        const snapshot = parseCloudSnapshot(bin.text);
-        if (snapshot.contracts.length === 0) {
-          findings.push({
-            id: "cloud-empty",
-            category: "sync",
-            severity: "high",
-            title: "คลังร่วมบนคลาวด์ว่างเปล่า",
-            detail:
-              "ถัง JSON สาธารณะมี contracts: [] — เครื่องใหม่ที่เปิดเว็บนี้จะไม่เห็นสัญญาที่บันทึกไว้บนเครื่องอื่น เว้นแต่เครื่องที่มีข้อมูลจะกดซิงก์แล้วดันขึ้นไป",
-            evidence: bin.text.slice(0, 240),
-            fix: "เปิดเว็บบนเครื่องที่มีสัญญาครบ แล้วกด «ซิงก์คลัง» จากนั้นรีเฟรชเครื่องอื่น",
-          });
-        } else {
-          findings.push({
-            id: "cloud-populated",
-            category: "sync",
-            severity: "pass",
-            title: `คลังคลาวด์มี ${snapshot.contracts.length} สัญญา`,
-            detail: `exportedAt=${snapshot.exportedAt}`,
-          });
-        }
-      } catch (error) {
-        findings.push({
-          id: "cloud-parse",
-          category: "sync",
-          severity: "high",
-          title: "รูปแบบคลังคลาวด์ไม่ใช่ JSON ของแอป",
-          detail: error instanceof Error ? error.message : String(error),
-          evidence: `${bin.contentType} · ${bin.text.slice(0, 180)}`,
-        });
-      }
-
-      findings.push({
-        id: "cloud-public-read",
-        category: "security",
-        severity: "critical",
-        title: "คลังสัญญาสาธารณะ อ่านได้โดยไม่ต้องล็อกอิน",
-        detail:
-          "รหัสถังอยู่ใน /sync-config.json ที่ใครก็โหลดได้ และ GET ถัง JSON ไม่มีสิทธิ์ — ชื่อลูกค้า ที่อยู่ และราคาค่าจ้างถูกเปิดไว้บนอินเทอร์เน็ต",
-        evidence: `${CLOUD_API}/${syncId}`,
-        fix: "ย้ายคลังไปที่เก็บที่มี authentication (เช่น GitHub Gist ส่วนตัว, Cloudflare KV + โทเคน, หรือเซิร์ฟเวอร์ของบริษัท) และอย่า commit syncId สาธารณะ",
-      });
-    }
-
-    if (options.status === 500) {
-      findings.push({
-        id: "cors-preflight-500",
-        category: "sync",
-        severity: "medium",
-        title: "OPTIONS ของคลังคลาวด์ตอบ 500",
-        detail:
-          "เบราว์เซอร์จะบล็อก PUT แบบ application/json เพราะ preflight พัง — แอปเลี่ยงด้วย Content-Type: text/plain ซึ่งเปราะบางถ้าผู้ให้บริการเปลี่ยนนโยบาย",
-        evidence: `HTTP ${options.status}`,
-        fix: "ใช้ที่เก็บที่รองรับ CORS PUT จริง หรือซิงก์ผ่านเซิร์ฟเวอร์ของตัวเอง",
-      });
-    }
   }
 
   findings.push(...sourceFindings());
@@ -562,69 +475,55 @@ function rank(severity: Severity): number {
   return { critical: 0, high: 1, medium: 2, low: 3, info: 4, pass: 5 }[severity];
 }
 
-/** Findings from reading the SKC-Contact source (pattarish-web/SKC-Contact). */
+/** Findings from reading the current Sheets-backed app source. */
 export function sourceFindings(): Finding[] {
   return [
     {
-      id: "logic-print-noopener",
+      id: "logic-print-payload",
       category: "logic",
-      severity: "medium",
-      title: "พิมพ์สัญญาพึ่ง sessionStorage ทั้งที่เปิดแท็บด้วย noopener",
+      severity: "pass",
+      title: "พิมพ์สัญญาเก็บ payload ใน localStorage",
       detail:
-        "writePrintPayload() เก็บข้อมูลใน sessionStorage ของแท็บเดิม แล้ว window.open('/print', '_blank', 'noopener,noreferrer') ซึ่งแท็บใหม่ไม่ได้รับ sessionStorage ชุดนั้น หน้าพิมพ์ต้องถอยไปอ่านร่างใน localStorage — ถ้าดราฟต์ไม่ตรงกับที่กดพิมพ์ จะได้เอกสารผิดหรือหน้า «ไม่พบข้อมูลสัญญา»",
-      evidence:
-        "src/components/contract-app.tsx printContract() · src/lib/draft-store.ts PRINT_PAYLOAD_KEY",
-      fix: "เอา noopener ออก หรือส่ง payload ผ่าน localStorage/IndexedDB ที่แชร์ข้ามแท็บได้แน่นอน แล้วค่อยลบหลังพิมพ์",
+        "writePrintPayload() เขียนทั้ง localStorage และ sessionStorage แล้วเปิดแท็บ /print โดยไม่ใช้ noopener — ถ้าป๊อปอัปถูกบล็อกจะพิมพ์ในแท็บเดิม",
+      evidence: "src/lib/draft-store.ts · src/lib/print.ts openPrintWindow()",
     },
     {
       id: "logic-contractor-position-fallback",
       category: "logic",
+      severity: "pass",
+      title: "ตำแหน่งผู้รับจ้างไม่ยืมตำแหน่งลูกค้า",
+      detail:
+        "buildContractContext() ใช้ตำแหน่งฝ่ายสั่งการ คลีน หรือค่าเริ่ม กรรมการผู้มีอำนาจ เท่านั้น",
+      evidence: "src/lib/contract.ts contractor_position",
+    },
+    {
+      id: "logic-pending-poll",
+      category: "sync",
+      severity: "pass",
+      title: "งานค้างไม่ถูกดึงทับจากชีต",
+      detail:
+        "ถ้าบันทึก/ลบ/นำเข้าขึ้นชีตไม่สำเร็จ ระบบเก็บคิวในเครื่อง แล้วทับผลดึงทุก 4 วินาทีด้วยงานค้าง",
+      evidence: "src/lib/pending-sync.ts · subscribeCentral()",
+    },
+    {
+      id: "logic-sheet-unauth-write",
+      category: "security",
       severity: "medium",
-      title: "ตำแหน่งผู้รับจ้างว่างแล้วไปใช้ตำแหน่งผู้ว่าจ้าง",
+      title: "ลิงก์เว็บแอปเขียนคลังได้ถ้าไม่ตั้งรหัส",
       detail:
-        "buildContractContext() ใส่ contractor_position = inputs.contractor_position || inputs.client_position — ถ้าล้างช่องตำแหน่งฝ่ายรับจ้าง สัญญาที่พิมพ์จะโชว์ตำแหน่งของลูกค้าที่ลายเซ็นผู้รับจ้าง",
-      evidence: "src/lib/contract.ts buildContractContext()",
-      fix: "ใช้ค่าเริ่มต้นของบริษัท (เช่น ผู้จัดการ) เท่านั้น ห้ามยืมตำแหน่งลูกค้า",
-    },
-    {
-      id: "logic-cloud-unauth-write",
-      category: "security",
-      severity: "critical",
-      title: "ใครก็เขียนทับคลังร่วมได้",
-      detail:
-        "ถัง extendsclass.com ไม่มี API key — PUT ด้วย text/plain สำเร็จโดยไม่ต้องล็อกอิน แฮ็กเกอร์ที่รู้ syncId (ซึ่งอยู่ในไฟล์สาธารณะ) สามารถลบหรือใส่สัญญาปลอมให้ทุกเครื่องที่กดซิงก์",
-      evidence: "PUT https://extendsclass.com/api/json-storage/bin/<syncId> → 200 โดยไม่มี Authorization",
-      fix: "ใส่ที่เก็บที่มีสิทธิ์เขียน, หมุน syncId ใหม่หลังย้าย, และอย่าเผยรหัสใน GitHub Pages",
-    },
-    {
-      id: "logic-cloud-pii",
-      category: "security",
-      severity: "high",
-      title: "ข้อมูลลูกค้าไปอยู่ที่ผู้ให้บริการต่างประเทศโดยไม่มีสัญญา",
-      detail:
-        "คลังสัญญา (ชื่อ ที่อยู่ ผู้มีอำนาจ ราคา) ถูก gzip แล้ว POST ไป extendsclass.com ซึ่งเป็น JSON bin ฟรี ไม่ใช่ระบบของบริษัท",
-      evidence: "src/lib/library-sync.ts CLOUD_API",
-      fix: "โฮสต์คลังบนโครงสร้างของบริษัท หรืออย่างน้อยผู้ให้บริการที่ลง DPA ได้",
+        "โฮสต์แบบ GitHub Pages ต้องเปิด Web app เป็น Anyone — ใครมีลิงก์ /exec สามารถบันทึกหรือลบสัญญาได้ จนกว่าจะตั้ง WRITE_TOKEN ใน Apps Script",
+      evidence: "scripts/SheetLibrary.gs assertToken_()",
+      fix: "ตั้ง Script property WRITE_TOKEN แล้ววางรหัสในหน้าตั้งค่าคลังของแอป",
     },
     {
       id: "logic-attachments-local-only",
       category: "sync",
-      severity: "low",
-      title: "ไฟล์แนบไม่ขึ้นคลาวด์",
+      severity: "info",
+      title: "ไฟล์แนบอยู่เฉพาะเครื่องนี้",
       detail:
-        "ซิงก์คลาวด์ส่งเฉพาะตัวสัญญา — เอกสารแนบอยู่ใน IndexedDB ของเครื่องนั้นเครื่องเดียว ส่งออกไฟล์ JSON ถึงจะได้ไฟล์แนบ",
-      evidence: "buildLibrarySnapshot({ forCloud: true }) ตัด attachments",
-      fix: "บอกผู้ใช้ให้ชัดใน UI และแนะนำส่งออกไฟล์สำรองถ้ามีเอกสารสำคัญ",
-    },
-    {
-      id: "logic-cloud-size-cap",
-      category: "sync",
-      severity: "low",
-      title: "คลังคลาวด์จำกัดประมาณ 95 KB",
-      detail:
-        "ถ้าสัญญามากเกิน แอปจะโยนข้อผิดพลาด «คลังใหญ่เกินขีดจำกัดคลาวด์» แล้วเครื่องอื่นจะไม่ได้อัปเดต",
-      evidence: "MAX_CLOUD_ENVELOPE_BYTES = 95_000",
-      fix: "ย้ายไปที่เก็บที่ใหญ่กว่า หรือซิงก์เฉพาะสัญญาที่เปลี่ยน",
+        "Google Sheet เก็บตัวสัญญา ไฟล์แนบอยู่ใน IndexedDB ของเบราว์เซอร์นั้นเครื่องเดียว",
+      evidence: "src/components/attachment-panel.tsx",
+      fix: "ส่งออกไฟล์คลังถ้าต้องย้ายเครื่องที่มีเอกสารสำคัญ",
     },
     {
       id: "logic-html-cache",
@@ -637,7 +536,7 @@ export function sourceFindings(): Finding[] {
   ];
 }
 
-/** Confirmed in a live browser pass of the GitHub Pages site. */
+/** Confirmed layout/behavior of the current app. */
 export function uiPassFindings(): Finding[] {
   return [
     {
@@ -646,8 +545,7 @@ export function uiPassFindings(): Finding[] {
       severity: "pass",
       title: "ปุ่มพิมพ์เปิดเอกสารสัญญาได้",
       detail:
-        "กดพิมพ์จากฟอร์มตัวอย่างแล้วได้หน้าสัญญา — แท็บใหม่ไม่มี sessionStorage แต่ดึงร่างจาก localStorage ได้ จึงยังพิมพ์ได้ในเคสปกติ",
-      evidence: "เบราว์เซอร์: พิมพ์ / PDF → ตัวอย่างเอกสารครบ · /print/ ตรง ๆ ก็มีข้อมูลถ้ามีร่างในเครื่อง",
+        "กดพิมพ์แล้วได้หน้าสัญญาขนาด A4 พร้อมคำใบ้ภาษาไทยเรื่องกระดาษและหัวท้ายหน้า",
     },
     {
       id: "ui-empty-library",
@@ -655,46 +553,31 @@ export function uiPassFindings(): Finding[] {
       severity: "pass",
       title: "หน้าคลังว่างแสดงสถานะถูกต้อง",
       detail:
-        "เมื่อถังร่วมว่าง หน้าแรกโชว์ «ยังไม่มีสัญญาที่บันทึก» และปุ่มเริ่มสร้างสัญญา ไม่ใช่หน้าขาวหรือข้อผิดพลาด JS",
-      evidence: "ข้อความว่างใน ContractLibrary สอดคล้องกับ GET bin ที่คืน []",
+        "เมื่อยังไม่มีสัญญา หน้าแรกโชว์ «ยังไม่มีสัญญาที่บันทึก» และปุ่มเริ่มสร้างสัญญา",
+    },
+    {
+      id: "ui-mobile-library",
+      category: "ui",
+      severity: "pass",
+      title: "คลังบนมือถือเป็นกริด 2 คอลัมน์ เป้าสัมผัสใหญ่",
+      detail:
+        "ปุ่มการ์ดสูง 44px สองคอลัมน์ ปุ่มหลักคือเปิดและต่ออายุ ไม่เรียงแถวเดียวขนาด 28px",
+    },
+    {
+      id: "ui-epoch-date",
+      category: "ui",
+      severity: "pass",
+      title: "วันที่แก้ล่าสุดไม่โชว์ 1/1/2513",
+      detail:
+        "formatUpdatedAt() แสดง — เมื่อค่าเวลาน้อยกว่าหนึ่งวันหลัง epoch",
     },
     {
       id: "ui-console-clean",
       category: "ui",
       severity: "pass",
-      title: "ไม่มีข้อผิดพลาดในคอนโซลตอนใช้งานหลัก",
+      title: "เส้นทางใช้งานหลักไม่พึ่งคลัง JSON เก่า",
       detail:
-        "โหลดคลัง สร้างสัญญา ใส่ข้อมูลตัวอย่าง และพิมพ์ ไม่มี JS error / ไฟล์ 404",
-    },
-    {
-      id: "ui-mobile-desktop-layout",
-      category: "ui",
-      severity: "high",
-      title: "มือถือยังใช้เลย์เอาต์เดสก์ท็อป — ปุ่มเล็กและเรียงแถวเดียว",
-      detail:
-        "หน้าคลังบนโทรศัพท์บีบแถบปุ่ม «รีวิวเอกสาร / สร้างสัญญาใหม่» และปุ่มในแต่ละการ์ด (รีวิว, คัดลอกต่อสัญญา, เปิดแก้ไข, ลบ) ให้อยู่แถวเดียวด้วย size sm (สูง 28px) ทั้งที่ควรเป็นกริด 2 คอลัมน์และเป้าสัมผัสอย่างน้อย 44px",
-      evidence:
-        "ภาพจากมือถือที่ส่งมา · src/components/contract-library.tsx ปุ่ม size=\"sm\" + flex-wrap · contract-app.tsx หัวเว็บเป็นแถวเดียว",
-      fix: "แยกปุ่มหัวเว็บบนมือถือเป็นแถวที่สอง ปุ่มคลังเป็นกริด 2 คอลัมน์สูง 44px และซ่อนปุ่มสร้างสัญญาซ้ำในแถบเครื่องมือ",
-    },
-    {
-      id: "ui-epoch-date-2513",
-      category: "ui",
-      severity: "medium",
-      title: "วันที่แก้ล่าสุดโชว์ 1/1/2513",
-      detail:
-        "สัญญาที่ updatedAt เป็น 0 ถูกส่งเข้า new Date(0).toLocaleString(\"th-TH\") ซึ่งในโซนเวลาไทยคือ 1 มกราคม 2513 07:00:01 ไม่ใช่วันที่แก้จริง",
-      evidence: "การ์ด SC-2569-09-015 ถึง 004 ในภาพมือถือ · contract-library.tsx",
-      fix: "ถ้าค่าเวลาน้อยกว่าหนึ่งวันหลัง epoch ให้แสดง — แทน",
-    },
-    {
-      id: "ui-folder-picker-desktop-only",
-      category: "ui",
-      severity: "info",
-      title: "เลือกโฟลเดอร์ร่วมใช้ได้เฉพาะเดสก์ท็อป",
-      detail:
-        "showDirectoryPicker ไม่มีบน Safari/Chrome มือถือ — ปุ่มนี้จึงหายหรือกดแล้ว error บนโทรศัพท์ ซึ่งทำให้หน้าตาไม่เหมือนคอม",
-      evidence: "src/lib/folder-sync.ts supportsFolderSync()",
+        "คลังอยู่ที่ Google Sheet ไม่มี sync-config.json หรือ extendsclass",
     },
   ];
 }

@@ -35,7 +35,7 @@ const CATEGORY_LABEL: Record<FindingCategory, string> = {
   http: "HTTP",
   assets: "ไฟล์สแตติก",
   pages: "เส้นทางหน้า",
-  sync: "คลังร่วม",
+  sync: "คลังสัญญา",
   security: "ความปลอดภัย",
   logic: "ตรรกะแอป",
   a11y: "การเข้าถึง",
@@ -113,14 +113,14 @@ export function AuditDashboard({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-medium tracking-wide text-teal-800 uppercase">
-                Superpowers · systematic debugging
+                ตรวจระบบ
               </p>
               <h1 className="text-xl font-semibold text-teal-950 sm:text-2xl">
                 ตัวเช็คข้อผิดพลาด SKC-Contact
               </h1>
               <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
                 ตรวจเว็บจัดทำสัญญาของบริษัทสั่งการ คลีน ทั้งไฟล์บน GitHub Pages
-                คลังร่วม และจุดบกพร่องในซอร์ส — ไม่เดา ไม่ซ่อมมั่ว
+                คลังสัญญา Google Sheet และจุดบกพร่องในซอร์ส — ไม่เดา ไม่ซ่อมมั่ว
                 หาสาเหตุก่อนเสนอทางแก้
               </p>
             </div>

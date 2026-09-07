@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  normalizeSheetsWebAppUrl,
   parseGvizText,
   rowToContract,
   rowsToContracts,
@@ -36,5 +37,26 @@ const remapped = rowsToContracts(parseGvizText(unlabeledHeader));
 assert.equal(remapped.length, 1);
 assert.equal(remapped[0]?.id, "contract_9");
 assert.equal(remapped[0]?.inputs.client_name, "จากชีต");
+
+assert.equal(
+  normalizeSheetsWebAppUrl(
+    "https://script.google.com/macros/s/abc"
+  ),
+  "https://script.google.com/macros/s/abc/exec"
+);
+assert.equal(
+  normalizeSheetsWebAppUrl(
+    "https://script.google.com/macros/s/abc/exec/"
+  ),
+  "https://script.google.com/macros/s/abc/exec"
+);
+
+const dated = rowToContract({
+  id: "contract_date",
+  contract_no: "SC-2569-09-010",
+  createdAt: "2026-01-15T00:00:00.000Z",
+  updatedAt: "2026-01-16T00:00:00.000Z",
+});
+assert.ok((dated?.updatedAt || 0) > 86_400_000);
 
 console.log("sheets.test.ts: all assertions passed");

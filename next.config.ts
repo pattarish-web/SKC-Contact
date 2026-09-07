@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_SHEET_ID:
       process.env.NEXT_PUBLIC_SHEET_ID ||
       "1Os1IdvKUPhuzBS0o765T3W_vnllgr_x03lfgfta2Tow",
+    NEXT_PUBLIC_SHEETS_WEBAPP:
+      process.env.NEXT_PUBLIC_SHEETS_WEBAPP ||
+      "https://script.google.com/macros/s/AKfycbwtzgnN-uGm_oURzWCw82eD1ZnrtwN-H2is3zSX9Bwc_ePh3edlVResUEx-q-d/exec",
   },
   ...(isGithubPages
     ? {

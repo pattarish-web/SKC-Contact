@@ -13,11 +13,12 @@ import {
   buildContractContext,
   buildSampleInputs,
   emptyInputs,
-  missingRequiredFields,
+  missingRequiredFieldItems,
   normalizeContractNo,
   peekNextContractNo,
   reconcileSeqFromSaved,
   type ContractInputs,
+  type FormStepId,
 } from "@/lib/contract";
 import {
   deleteContract,
@@ -41,13 +42,16 @@ import {
   applyCentralContracts,
   deleteContractOnCentral,
   fingerprint,
+  mergeRemoteWithPending,
   pullCentralLibrary,
   replaceCentralLibrary,
   saveContractToCentral,
   subscribeCentral,
 } from "@/lib/central-client";
+import { queuePendingOp, dropPendingForId } from "@/lib/pending-sync";
 import { downloadLibraryFile, importLibraryFile } from "@/lib/library-file";
 import { appPath } from "@/lib/paths";
+import { openPrintWindow } from "@/lib/print";
 import { endDateFromStart, monthsFromRange, todayISO } from "@/lib/thai";
 import {
   FileSearch,
@@ -105,22 +109,46 @@ export function ContractApp() {
   const [dateError, setDateError] = useState<string | null>(null);
   const [syncHint, setSyncHint] = useState<string | null>(null);
   const [liveConnected, setLiveConnected] = useState(false);
+  const [pendingSync, setPendingSync] = useState(false);
+  const [focusedStep, setFocusedStep] = useState<FormStepId | null>(null);
 
   const ctx = useMemo(() => buildContractContext(inputs), [inputs]);
-  const missing = useMemo(() => missingRequiredFields(inputs), [inputs]);
+  const missingItems = useMemo(
+    () => missingRequiredFieldItems(inputs),
+    [inputs]
+  );
+  const missing = useMemo(
+    () => missingItems.map((item) => item.label),
+    [missingItems]
+  );
+
+  function focusFirstMissing() {
+    const first = missingItems[0];
+    if (!first) return;
+    setFocusedStep(first.step);
+    setPane("form");
+    window.setTimeout(() => {
+      const el = document.getElementById(first.id);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (el instanceof HTMLElement) {
+        el.focus({ preventScroll: true });
+      }
+    }, 50);
+  }
 
   const applyLive = useCallback(async (rows: SavedContract[]) => {
+    const merged = mergeRemoteWithPending(rows);
     const current = await listContracts();
-    if (fingerprint(current) !== fingerprint(rows)) {
-      await applyCentralContracts(rows);
+    if (fingerprint(current) !== fingerprint(merged)) {
+      await applyCentralContracts(merged);
     }
-    const nos = savedNosOf(rows);
+    const nos = savedNosOf(merged);
     reconcileSeqFromSaved(nos);
     syncUnsavedDraftContractNo(nos);
-    setLibrary(rows);
+    setLibrary(merged);
     setLibraryError(null);
     setLibraryLoading(false);
-    setSyncHint(`Google Sheet พร้อมแล้ว ${rows.length} สัญญา · อัปเดตทุก 4 วินาที`);
+    setSyncHint(`คลังสัญญาพร้อมแล้ว ${merged.length} รายการ · อัปเดตทุก 4 วินาที`);
   }, []);
 
   const reloadLocalLibrary = useCallback(async () => {
@@ -149,12 +177,18 @@ export function ContractApp() {
     }
   }, [applyLive, reloadLocalLibrary]);
 
-  async function quietPush(row: SavedContract): Promise<boolean> {
+  async function quietPush(
+    row: SavedContract,
+    removeIds: string[] = []
+  ): Promise<boolean> {
     try {
-      const next = await saveContractToCentral(row);
+      const next = await saveContractToCentral(row, removeIds);
+      dropPendingForId(row.id);
       await applyLive(next);
       return true;
     } catch {
+      queuePendingOp({ type: "save", row, removeIds });
+      setPendingSync(true);
       return false;
     }
   }
@@ -190,10 +224,17 @@ export function ContractApp() {
       (rows) => {
         void applyLive(rows);
       },
-      (connected) => {
+      (connected, pending) => {
         setLiveConnected(connected);
+        setPendingSync(pending);
         if (!connected) {
-          setSyncHint("ขาดการเชื่อม Google Sheet — กำลังลองใหม่");
+          setSyncHint(
+            pending
+              ? "ขาดการเชื่อมคลังสัญญา — งานที่เพิ่งบันทึกยังอยู่ในเครื่องนี้"
+              : "ขาดการเชื่อมคลังสัญญา — กำลังลองใหม่"
+          );
+        } else if (pending) {
+          setSyncHint("มีงานค้างส่งขึ้นชีต — จะส่งใหม่ให้อัตโนมัติ");
         }
       }
     );
@@ -207,7 +248,12 @@ export function ContractApp() {
     key: K,
     value: ContractInputs[K]
   ) {
-    setDateError(null);
+    if (key === "end_date" && inputs.start_date && value) {
+      const months = monthsFromRange(inputs.start_date, String(value));
+      setDateError(months == null ? "วันสิ้นสุดต้องไม่ก่อนวันเริ่มสัญญา" : null);
+    } else {
+      setDateError(null);
+    }
     setInputs((prev) => {
       const next = { ...prev, [key]: value };
 
@@ -225,9 +271,7 @@ export function ContractApp() {
 
       if (key === "end_date" && next.start_date && value) {
         const months = monthsFromRange(next.start_date, String(value));
-        if (months == null) {
-          setDateError("วันสิ้นสุดต้องไม่ก่อนวันเริ่มสัญญา");
-        } else {
+        if (months != null) {
           next.contract_months = String(months);
         }
       }
@@ -264,23 +308,16 @@ export function ContractApp() {
 
   function printContract() {
     if (missing.length > 0) {
-      window.alert(`กรอกข้อมูลให้ครบก่อนพิมพ์:\n• ${missing.join("\n• ")}`);
+      focusFirstMissing();
       return;
     }
     writePrintPayload(inputs);
-    const popup = window.open(
-      appPath("/print"),
-      "_blank",
-      "noopener,noreferrer"
-    );
-    if (!popup) {
-      window.location.assign(appPath("/print"));
-    }
+    openPrintWindow(appPath("/print"));
   }
 
   async function handleSave() {
     if (missing.length > 0) {
-      window.alert(`กรอกข้อมูลให้ครบก่อนบันทึก:\n• ${missing.join("\n• ")}`);
+      focusFirstMissing();
       return;
     }
     try {
@@ -314,20 +351,20 @@ export function ContractApp() {
       }
 
       const saved = await saveContract(payload, { id: targetId });
-      await deleteDuplicateContractNumbers(
+      const removedIds = await deleteDuplicateContractNumbers(
         saved.id,
         saved.inputs.contract_no,
         saved.inputs.contract_date
       );
       loadContractIntoDraft(saved.id, saved.inputs);
-      const cloudOk = await quietPush(saved);
+      const cloudOk = await quietPush(saved, removedIds);
       const action = sessionId
         ? `อัปเดตสัญญา ${saved.inputs.contract_no} แล้ว`
         : `สร้างสัญญา ${saved.inputs.contract_no} แล้ว`;
       setSaveMessage(
         cloudOk
-          ? `${action} · ขึ้น Google Sheet แล้ว`
-          : `${action} ในเครื่อง · ยังส่งขึ้นชีตไม่ได้ วางลิงก์เว็บแอปที่หน้าคลังก่อน`
+          ? `${action} · ขึ้นคลังสัญญาแล้ว`
+          : `${action} ในเครื่องนี้ · จะส่งขึ้นชีตใหม่อัตโนมัติเมื่อเชื่อมได้`
       );
     } catch {
       window.alert("บันทึกสัญญาไม่สำเร็จ");
@@ -356,8 +393,10 @@ export function ContractApp() {
       const next = await deleteContractOnCentral(id);
       await applyLive(next);
     } catch {
+      queuePendingOp({ type: "delete", id });
+      setPendingSync(true);
       await reloadLocalLibrary();
-      window.alert("ลบในเครื่องแล้ว แต่ Google Sheet ยังไม่ทัน");
+      window.alert("ลบในเครื่องแล้ว จะลบออกจากคลังสัญญากลางใหม่อัตโนมัติเมื่อเชื่อมได้");
     }
   }
 
@@ -382,7 +421,7 @@ export function ContractApp() {
       setView("editor");
       setPane("form");
       setSaveMessage(
-        `คัดลอกต่อสัญญาจาก ${
+        `ต่ออายุจาก ${
           row.inputs.contract_no || "สัญญาเดิม"
         } → ${saved.inputs.contract_no} · ตรวจวันที่แล้วแก้ไขได้เลย`
       );
@@ -403,7 +442,7 @@ export function ContractApp() {
   async function handleImportLibrary(file: File) {
     if (
       !window.confirm(
-        "นำเข้าจะแทนที่สัญญาทั้งหมดใน Google Sheet ต้องการทำต่อหรือไม่?"
+        `นำเข้าจะแทนที่สัญญาทั้งหมดในคลังสัญญา (${library.length} รายการที่มีอยู่จะหายจากชีต) ต้องการทำต่อหรือไม่?`
       )
     ) {
       return;
@@ -412,10 +451,19 @@ export function ContractApp() {
       setLibraryLoading(true);
       const result = await importLibraryFile(file);
       const rows = await listContracts();
-      const next = await replaceCentralLibrary(rows);
-      await applyLive(next);
+      try {
+        const next = await replaceCentralLibrary(rows);
+        await applyLive(next);
+      } catch {
+        queuePendingOp({ type: "replace", rows });
+        setPendingSync(true);
+        await reloadLocalLibrary();
+        window.alert(
+          "นำเข้าในเครื่องแล้ว แต่ยังส่งขึ้นชีตไม่ได้ จะส่งใหม่อัตโนมัติเมื่อเชื่อมได้"
+        );
+      }
       setSaveMessage(
-        `นำเข้าแล้ว ${result.contracts} สัญญาเข้า Google Sheet (${result.attachments} ไฟล์แนบในเครื่องนี้)`
+        `นำเข้าแล้ว ${result.contracts} สัญญาเข้าคลังสัญญา (${result.attachments} ไฟล์แนบอยู่เฉพาะเครื่องนี้)`
       );
       setView("library");
     } catch (error) {
@@ -442,9 +490,9 @@ export function ContractApp() {
 
   const subtitle =
     view === "library"
-      ? "คลังกลาง Google Sheet · ทุกเครื่องเห็นชุดเดียวกัน"
+      ? "คลังสัญญา · ทุกเครื่องเห็นชุดเดียวกัน"
       : view === "review"
-        ? "รีวิวเอกสารและไฟล์แนบ"
+        ? "ดูเอกสารและไฟล์แนบ"
         : "จัดทำสัญญาบริการทำความสะอาด";
 
   if (!hydrated) {
@@ -467,8 +515,8 @@ export function ContractApp() {
               void refreshLibrary();
               setView("library");
             }}
-            title="กลับหน้าแรก"
-            aria-label="กลับหน้าแรก"
+            title="กลับคลังสัญญา"
+            aria-label="กลับคลังสัญญา"
           >
             <BrandMark />
           </button>
@@ -480,7 +528,7 @@ export function ContractApp() {
                 void refreshLibrary();
                 setView("library");
               }}
-              title="กลับหน้าแรก"
+              title="กลับคลังสัญญา"
             >
               {COMPANY.shortName}
             </button>
@@ -496,12 +544,13 @@ export function ContractApp() {
                 onClick={() => openReview()}
               >
                 <FileSearch data-icon="inline-start" />
-                รีวิวเอกสาร
+                ดูเอกสาร
               </Button>
             ) : null}
             {view === "editor" ? (
               <>
                 <HomeBackButton
+                  label="กลับคลัง"
                   onClick={() => {
                     void refreshLibrary();
                     setView("library");
@@ -526,6 +575,7 @@ export function ContractApp() {
               </>
             ) : view === "review" ? (
               <HomeBackButton
+                label="กลับคลัง"
                 onClick={() => {
                   void refreshLibrary();
                   setView("library");
@@ -546,7 +596,7 @@ export function ContractApp() {
                 onClick={() => openReview()}
               >
                 <FileSearch data-icon="inline-start" />
-                รีวิวเอกสาร
+                ดูเอกสาร
               </Button>
               <Button className="h-11" onClick={startNew}>
                 สร้างสัญญาใหม่
@@ -556,6 +606,7 @@ export function ContractApp() {
             <div className="mt-3 sm:hidden">
               <HomeBackButton
                 className="h-11 w-full"
+                label="กลับคลัง"
                 onClick={() => {
                   void refreshLibrary();
                   setView("library");
@@ -573,6 +624,7 @@ export function ContractApp() {
           error={libraryError}
           liveHint={syncHint}
           liveConnected={liveConnected}
+          pendingSync={pendingSync}
           onNew={startNew}
           onOpen={(id) => void openSaved(id)}
           onDuplicate={(id) => void duplicateSaved(id)}
@@ -598,6 +650,7 @@ export function ContractApp() {
           <div className="no-print flex gap-2 lg:hidden">
             <HomeBackButton
               className="flex-1"
+              label="กลับคลัง"
               onClick={() => {
                 void refreshLibrary();
                 setView("library");
@@ -631,9 +684,12 @@ export function ContractApp() {
             </div>
           ) : null}
           {saveMessage ? (
-            <div className="no-print rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs text-teal-950 lg:col-span-2">
+            <div
+              className="no-print rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs text-teal-950 lg:col-span-2"
+              aria-live="polite"
+            >
               {saveMessage}
-              {activeId ? " · สามารถอัปโหลดเอกสารแนบได้แล้ว" : ""}
+              {activeId ? " · สามารถอัปโหลดเอกสารแนบได้แล้ว (ไฟล์อยู่เครื่องนี้)" : ""}
             </div>
           ) : null}
 
@@ -660,6 +716,7 @@ export function ContractApp() {
               onReset={resetForm}
               activeId={activeId}
               savedContractNos={savedNosOf(library)}
+              focusedStep={focusedStep}
             />
           </aside>
 

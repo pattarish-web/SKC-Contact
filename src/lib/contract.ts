@@ -803,50 +803,86 @@ export function buildContractContext(inputs: ContractInputs): ContractContext {
     total_with_vat,
     contractor_authorized: inputs.contractor_authorized.trim(),
     contractor_position:
-      inputs.contractor_position.trim() ||
-      inputs.client_position.trim() ||
-      "กรรมการผู้มีอำนาจ",
+      inputs.contractor_position.trim() || "กรรมการผู้มีอำนาจ",
     witness_client: inputs.witness_client.trim(),
     witness_contractor: inputs.witness_contractor.trim(),
     include_equipment: inputs.include_equipment,
   };
 }
 
-export function missingRequiredFields(inputs: ContractInputs): string[] {
-  const missing: string[] = [];
-  if (!inputs.contract_no.trim()) missing.push("เลขที่สัญญา");
-  if (!inputs.contract_date) missing.push("วันที่สัญญา");
-  if (!inputs.client_name.trim()) missing.push("ชื่อผู้ว่าจ้าง");
-  if (!inputs.client_address.trim()) missing.push("ที่อยู่ผู้ว่าจ้าง");
-  if (!inputs.client_authorized.trim()) missing.push("ผู้มีอำนาจลงนาม");
-  if (!inputs.start_date) missing.push("วันเริ่มสัญญา");
-  if (!inputs.end_date) missing.push("วันสิ้นสุดสัญญา");
+export type FormStepId = "client" | "staff" | "sow" | "sign";
+
+export type MissingField = {
+  id: string;
+  label: string;
+  step: FormStepId;
+};
+
+export function missingRequiredFieldItems(
+  inputs: ContractInputs
+): MissingField[] {
+  const missing: MissingField[] = [];
+  if (!inputs.contract_no.trim()) {
+    missing.push({ id: "contract_no", label: "เลขที่สัญญา", step: "client" });
+  }
+  if (!inputs.contract_date) {
+    missing.push({ id: "contract_date", label: "วันที่ทำสัญญา", step: "client" });
+  }
+  if (!inputs.client_name.trim()) {
+    missing.push({ id: "client_name", label: "ชื่อผู้ว่าจ้าง", step: "client" });
+  }
+  if (!inputs.client_address.trim()) {
+    missing.push({ id: "client_address", label: "ที่อยู่ผู้ว่าจ้าง", step: "client" });
+  }
+  if (!inputs.client_authorized.trim()) {
+    missing.push({ id: "client_authorized", label: "ผู้มีอำนาจลงนาม", step: "client" });
+  }
+  if (!inputs.start_date) {
+    missing.push({ id: "start_date", label: "วันเริ่มสัญญา", step: "staff" });
+  }
+  if (!inputs.end_date) {
+    missing.push({ id: "end_date", label: "วันสิ้นสุดสัญญา", step: "staff" });
+  }
   if (
     inputs.start_date &&
     inputs.end_date &&
     inputs.end_date < inputs.start_date
   ) {
-    missing.push("วันสิ้นสุดต้องไม่ก่อนวันเริ่ม");
+    missing.push({
+      id: "end_date",
+      label: "วันสิ้นสุดต้องไม่ก่อนวันเริ่ม",
+      step: "staff",
+    });
   }
   const months = parseNumber(inputs.contract_months);
   if (!inputs.contract_months.trim() || months < 1) {
-    missing.push("จำนวนเดือน");
+    missing.push({ id: "contract_months", label: "จำนวนเดือน", step: "staff" });
   }
   const roles = normalizeStaffRoles(inputs.staff_roles, {
     staff_count: inputs.staff_count,
     price_per_head: inputs.price_per_head,
   });
   if (roles.length === 0) {
-    missing.push("ตำแหน่งงาน");
+    missing.push({ id: "staff_roles", label: "ตำแหน่งงาน", step: "staff" });
   } else {
     const hasStaff = roles.some((role) => parseNumber(role.count) > 0);
     const hasRate = roles.some((role) => parseNumber(role.price_per_head) > 0);
     const missingTitle = roles.some((role) => !role.title.trim());
-    if (!hasStaff) missing.push("จำนวนพนักงาน");
-    if (!hasRate) missing.push("ค่าจ้างต่อคน");
-    if (missingTitle) missing.push("ชื่อตำแหน่งงาน");
+    if (!hasStaff) {
+      missing.push({ id: "staff_roles", label: "จำนวนพนักงาน", step: "staff" });
+    }
+    if (!hasRate) {
+      missing.push({ id: "staff_roles", label: "ค่าจ้างต่อคน", step: "staff" });
+    }
+    if (missingTitle) {
+      missing.push({ id: "staff_roles", label: "ชื่อตำแหน่งงาน", step: "staff" });
+    }
   }
   return missing;
+}
+
+export function missingRequiredFields(inputs: ContractInputs): string[] {
+  return missingRequiredFieldItems(inputs).map((item) => item.label);
 }
 
 type SeqState = { year: number; month: number; seq: number };

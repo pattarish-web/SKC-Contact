@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { ContractContext, ContractInputs } from "@/lib/contract";
+import type { ContractContext, ContractInputs, FormStepId } from "@/lib/contract";
 import {
   CONTRACTOR_SIGNATORY_PRESETS,
   DEFAULT_SOW_ELECTRICAL,
@@ -25,7 +25,15 @@ import {
   peekNextContractNo,
 } from "@/lib/contract";
 import { formatMoney } from "@/lib/thai";
-import { RotateCcw, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, RotateCcw, Sparkles } from "lucide-react";
+import { useState } from "react";
+
+const STEPS: { id: FormStepId; title: string }[] = [
+  { id: "client", title: "ลูกค้าและสัญญา" },
+  { id: "staff", title: "ระยะเวลาและพนักงาน" },
+  { id: "sow", title: "ขอบเขตงานและวัสดุ" },
+  { id: "sign", title: "ลงนาม ราคา แนบไฟล์" },
+];
 
 function Field({
   label,
@@ -57,6 +65,7 @@ export function ContractForm({
   onReset,
   activeId,
   savedContractNos = [],
+  focusedStep = null,
 }: {
   inputs: ContractInputs;
   ctx: ContractContext;
@@ -69,9 +78,43 @@ export function ContractForm({
   activeId?: string | null;
   /** Used to preview the next number from saved contracts only. */
   savedContractNos?: readonly string[];
+  focusedStep?: FormStepId | null;
 }) {
+  const [stepIndex, setStepIndex] = useState(0);
+  const [seenFocus, setSeenFocus] = useState<FormStepId | null>(null);
+  if (focusedStep && focusedStep !== seenFocus) {
+    setSeenFocus(focusedStep);
+    const index = STEPS.findIndex((step) => step.id === focusedStep);
+    if (index >= 0) setStepIndex(index);
+  }
+
+  const step = STEPS[stepIndex] ?? STEPS[0];
+
   return (
     <div className="space-y-6">
+      <div className="no-print lg:hidden">
+        <p className="text-xs font-medium text-teal-800">
+          ขั้นที่ {stepIndex + 1} จาก {STEPS.length}
+        </p>
+        <p className="text-sm font-semibold text-teal-950">{step?.title}</p>
+        <div className="mt-2 grid grid-cols-4 gap-1">
+          {STEPS.map((item, index) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setStepIndex(index)}
+              className={`h-1.5 rounded-full ${
+                index === stepIndex
+                  ? "bg-teal-800"
+                  : index < stepIndex
+                    ? "bg-teal-400"
+                    : "bg-teal-100"
+              }`}
+              aria-label={item.title}
+            />
+          ))}
+        </div>
+      </div>
       {onFillSample || onReset ? (
         <div className="flex gap-2">
           {onFillSample ? (
@@ -98,6 +141,10 @@ export function ContractForm({
           ) : null}
         </div>
       ) : null}
+      <div
+        id="form-step-client"
+        className={`space-y-6 ${step?.id === "client" ? "block" : "hidden lg:block"}`}
+      >
       <section className="space-y-3">
         <h2 className="text-sm font-semibold tracking-wide text-teal-800">
           ข้อมูลสัญญา
@@ -190,7 +237,12 @@ export function ContractForm({
           placeholder="เช่น ผู้จัดการฝ่ายอาคาร"
         />
       </section>
+      </div>
 
+      <div
+        id="form-step-staff"
+        className={`space-y-6 ${step?.id === "staff" ? "block" : "hidden lg:block"}`}
+      >
       <section className="space-y-3">
         <h2 className="text-sm font-semibold tracking-wide text-teal-800">
           ระยะเวลาสัญญา
@@ -233,7 +285,7 @@ export function ContractForm({
         </div>
       </section>
 
-      <section className="space-y-3">
+      <section id="staff_roles" className="space-y-3">
         <h2 className="text-sm font-semibold tracking-wide text-teal-800">
           พนักงานและค่าบริการ
         </h2>
@@ -308,13 +360,18 @@ export function ContractForm({
           </div>
         </div>
       </section>
+      </div>
 
+      <div
+        id="form-step-sow"
+        className={`space-y-6 ${step?.id === "sow" ? "block" : "hidden lg:block"}`}
+      >
       <section className="space-y-3">
         <h2 className="text-sm font-semibold tracking-wide text-teal-800">
           เอกสารแนบท้าย 2 — ขอบเขตงาน / อุปกรณ์
         </h2>
         <Field
-          label="ขอบเขตงาน (Scope of Work)"
+          label="ขอบเขตงาน"
           htmlFor="sow_scope"
           hint="รายละเอียดพื้นที่ ขั้นตอน และวิธีการทำความสะอาด"
         >
@@ -412,7 +469,12 @@ export function ContractForm({
           </>
         ) : null}
       </section>
+      </div>
 
+      <div
+        id="form-step-sign"
+        className={`space-y-6 ${step?.id === "sign" ? "block" : "hidden lg:block"}`}
+      >
       <section className="space-y-3">
         <h2 className="text-sm font-semibold tracking-wide text-teal-800">
           ผู้ลงนามฝ่ายผู้รับจ้าง (ไม่บังคับ)
@@ -491,11 +553,11 @@ export function ContractForm({
             </dd>
           </div>
           <div className="flex justify-between gap-4 text-muted-foreground">
-            <dt>VAT 7% (ยังไม่รวมในสัญญา)</dt>
+            <dt>ภาษีมูลค่าเพิ่ม 7% (ยังไม่รวมในสัญญา)</dt>
             <dd className="tabular-nums">{formatMoney(ctx.vat_amount)} บาท</dd>
           </div>
           <div className="flex justify-between gap-4 border-t border-teal-200 pt-2">
-            <dt className="font-medium text-teal-900">รวม VAT</dt>
+            <dt className="font-medium text-teal-900">รวมภาษีมูลค่าเพิ่ม</dt>
             <dd className="font-semibold tabular-nums">
               {formatMoney(ctx.total_with_vat)} บาท
             </dd>
@@ -509,6 +571,31 @@ export function ContractForm({
       </section>
 
       <AttachmentPanel contractId={activeId ?? null} />
+      </div>
+
+      <div className="no-print flex gap-2 lg:hidden">
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1"
+          disabled={stepIndex === 0}
+          onClick={() => setStepIndex((value) => Math.max(0, value - 1))}
+        >
+          <ChevronLeft data-icon="inline-start" />
+          ย้อนกลับ
+        </Button>
+        <Button
+          type="button"
+          className="flex-1"
+          disabled={stepIndex >= STEPS.length - 1}
+          onClick={() =>
+            setStepIndex((value) => Math.min(STEPS.length - 1, value + 1))
+          }
+        >
+          ขั้นถัดไป
+          <ChevronRight />
+        </Button>
+      </div>
 
       <p className="text-center text-xs text-muted-foreground">
         ร่างสัญญาบันทึกอัตโนมัติในเบราว์เซอร์นี้

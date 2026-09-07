@@ -6,8 +6,17 @@ import {
   type SavedContract,
 } from "@/lib/contracts-db";
 import type { LibrarySnapshot as CentralSnapshot } from "@/lib/central-store";
+import { emptyInputs } from "@/lib/contract";
+import {
+  applyPendingOps,
+  clearPendingOps,
+  loadPendingOps,
+  persistPendingOps,
+  type PendingOp,
+} from "@/lib/pending-sync";
 import {
   getSheetsWebAppUrl,
+  getSheetsWriteToken,
   gvizUrl,
   hasSheetsWriter,
   parseGvizText,
@@ -16,10 +25,18 @@ import {
   SHEET_NAME,
 } from "@/lib/sheets";
 
-function asSaved(row: CentralSnapshot["contracts"][number]): SavedContract {
+const JSONP_TIMEOUT_MS = 12_000;
+
+export function asSaved(row: {
+  id: string;
+  inputs: Record<string, unknown> | SavedContract["inputs"];
+  createdAt: number;
+  updatedAt: number;
+  notes?: string;
+}): SavedContract {
   return {
     id: row.id,
-    inputs: row.inputs as SavedContract["inputs"],
+    inputs: emptyInputs(row.inputs as Partial<SavedContract["inputs"]>),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     notes: row.notes || "",
@@ -31,6 +48,10 @@ export function fingerprint(rows: SavedContract[]): string {
     .map((row) => `${row.id}:${row.updatedAt || 0}`)
     .sort()
     .join("|");
+}
+
+export function mergeRemoteWithPending(remote: SavedContract[]): SavedContract[] {
+  return applyPendingOps(remote, loadPendingOps()).map(asSaved);
 }
 
 export async function applyCentralContracts(
@@ -46,7 +67,15 @@ export async function applyCentralContracts(
 }
 
 function snapshotContracts(data: CentralSnapshot): SavedContract[] {
-  return (data.contracts || []).map(asSaved);
+  return (data.contracts || []).map((row) =>
+    asSaved({
+      id: row.id,
+      inputs: row.inputs as SavedContract["inputs"],
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      notes: row.notes,
+    })
+  );
 }
 
 async function fetchGvizContracts(): Promise<SavedContract[]> {
@@ -73,6 +102,7 @@ function fetchGvizJsonp(sheetName?: string): Promise<SavedContract[]> {
   return new Promise((resolve, reject) => {
     const callback = `skcGviz_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const script = document.createElement("script");
+    let settled = false;
     const cleanup = () => {
       script.remove();
       try {
@@ -81,21 +111,31 @@ function fetchGvizJsonp(sheetName?: string): Promise<SavedContract[]> {
         (window as unknown as Record<string, unknown>)[callback] = undefined;
       }
     };
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      cleanup();
+      fn();
+    };
     (window as unknown as Record<string, (payload: unknown) => void>)[callback] = (
       payload: unknown
     ) => {
-      cleanup();
-      try {
-        const text = `google.visualization.Query.setResponse(${JSON.stringify(payload)});`;
-        resolve(rowsToContracts(parseGvizText(text)).map(asSaved));
-      } catch (error) {
-        reject(error);
-      }
+      finish(() => {
+        try {
+          const text = `google.visualization.Query.setResponse(${JSON.stringify(payload)});`;
+          resolve(rowsToContracts(parseGvizText(text)).map(asSaved));
+        } catch (error) {
+          reject(error);
+        }
+      });
     };
     script.onerror = () => {
-      cleanup();
-      reject(new Error("ดึงคลังจาก Google Sheet ไม่สำเร็จ"));
+      finish(() => reject(new Error("ดึงคลังจาก Google Sheet ไม่สำเร็จ")));
     };
+    const timer = window.setTimeout(() => {
+      finish(() => reject(new Error("ดึงคลังจาก Google Sheet หมดเวลา")));
+    }, JSONP_TIMEOUT_MS);
     const sheetQuery = sheetName
       ? `&sheet=${encodeURIComponent(sheetName)}`
       : "";
@@ -104,7 +144,13 @@ function fetchGvizJsonp(sheetName?: string): Promise<SavedContract[]> {
   });
 }
 
-async function postToWebApp(body: unknown): Promise<SavedContract[]> {
+function withToken(body: Record<string, unknown>): Record<string, unknown> {
+  const token = getSheetsWriteToken();
+  if (!token) return body;
+  return { ...body, token };
+}
+
+async function postToWebApp(body: Record<string, unknown>): Promise<SavedContract[]> {
   const url = getSheetsWebAppUrl();
   if (!url) {
     throw new Error("ยังไม่ได้วางลิงก์เว็บแอปของ Google Sheet");
@@ -112,7 +158,7 @@ async function postToWebApp(body: unknown): Promise<SavedContract[]> {
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(body),
+    body: JSON.stringify(withToken(body)),
     redirect: "follow",
   });
   const text = await res.text();
@@ -158,9 +204,14 @@ export async function pullCentralLibrary(): Promise<SavedContract[]> {
 }
 
 export async function saveContractToCentral(
-  row: SavedContract
+  row: SavedContract,
+  removeIds: string[] = []
 ): Promise<SavedContract[]> {
-  return postToWebApp({ action: "save", payload: row });
+  return postToWebApp({
+    action: "save",
+    payload: row,
+    removeIds,
+  });
 }
 
 export async function deleteContractOnCentral(
@@ -175,28 +226,80 @@ export async function replaceCentralLibrary(
   return postToWebApp({ action: "replace", payload: contracts });
 }
 
+export async function flushPendingOps(): Promise<SavedContract[] | null> {
+  const ops = loadPendingOps();
+  if (ops.length === 0) return null;
+  const remaining: PendingOp[] = [];
+  let last: SavedContract[] | null = null;
+  for (let i = 0; i < ops.length; i += 1) {
+    const op = ops[i]!;
+    try {
+      if (op.type === "save") {
+        last = await saveContractToCentral(asSaved(op.row), op.removeIds || []);
+      } else if (op.type === "delete") {
+        last = await deleteContractOnCentral(op.id);
+      } else {
+        last = await replaceCentralLibrary(op.rows.map(asSaved));
+      }
+    } catch {
+      remaining.push(...ops.slice(i));
+      persistPendingOps(remaining);
+      return last;
+    }
+  }
+  clearPendingOps();
+  return last;
+}
+
 export function subscribeCentral(
   onSnapshot: (contracts: SavedContract[]) => void,
-  onStatus?: (connected: boolean) => void
+  onStatus?: (connected: boolean, pending: boolean) => void
 ): () => void {
   let stopped = false;
+  let inFlight = false;
+  let queued = false;
+  let generation = 0;
+
   const tick = async () => {
     if (stopped) return;
+    if (inFlight) {
+      queued = true;
+      return;
+    }
+    inFlight = true;
+    const gen = ++generation;
     try {
-      const rows = await pullCentralLibrary();
-      if (stopped) return;
-      onStatus?.(true);
-      onSnapshot(rows);
+      const flushed = await flushPendingOps();
+      const rows = flushed ?? (await pullCentralLibrary());
+      if (stopped || gen !== generation) return;
+      const merged = mergeRemoteWithPending(rows);
+      onStatus?.(true, loadPendingOps().length > 0);
+      onSnapshot(merged);
     } catch {
-      if (!stopped) onStatus?.(false);
+      if (!stopped) onStatus?.(false, loadPendingOps().length > 0);
+    } finally {
+      inFlight = false;
+      if (queued && !stopped) {
+        queued = false;
+        void tick();
+      }
     }
   };
+
   void tick();
   const timer = window.setInterval(() => {
     void tick();
   }, 4000);
+
+  const onWebApp = () => {
+    generation += 1;
+    void tick();
+  };
+  window.addEventListener("skc-sheets-webapp", onWebApp);
+
   return () => {
     stopped = true;
     window.clearInterval(timer);
+    window.removeEventListener("skc-sheets-webapp", onWebApp);
   };
 }

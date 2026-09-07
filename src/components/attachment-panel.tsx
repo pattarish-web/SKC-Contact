@@ -108,6 +108,7 @@ export function AttachmentPanel({
         </h2>
         <p className="text-xs leading-5 text-muted-foreground">
           บันทึกสัญญาก่อน จึงจะอัปโหลดเอกสารแนบได้
+          ไฟล์อยู่เฉพาะเครื่องนี้ ไม่ตามไปเครื่องอื่น
         </p>
       </section>
     );
@@ -139,7 +140,7 @@ export function AttachmentPanel({
         />
       </div>
       <p className="text-xs text-muted-foreground">
-        รองรับ PDF, รูปภาพ, Word/Excel สูงสุดไฟล์ละ 8 MB เก็บในเบราว์เซอร์นี้เท่านั้น
+        รองรับ PDF, รูปภาพ, Word/Excel สูงสุดไฟล์ละ 8 MB · ไฟล์แนบอยู่เฉพาะเครื่องนี้ ไม่ตามไปเครื่องอื่น
       </p>
       {error ? (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-950">
@@ -176,6 +177,7 @@ export function AttachmentPanel({
                 type="button"
                 variant="destructive"
                 size="icon-xs"
+                aria-label={`ลบไฟล์ ${item.name}`}
                 onClick={() => void onDelete(item.id)}
               >
                 <Trash2 />

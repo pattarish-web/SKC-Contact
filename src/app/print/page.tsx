@@ -79,9 +79,9 @@ export default function PrintPage() {
           <div className="min-w-0 text-sm text-zinc-700">
             <p>หากกล่องพิมพ์ไม่เปิดอัตโนมัติ ให้กดปุ่มพิมพ์ด้านขวา</p>
             <p className="mt-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-950">
-              เลือกกระดาษ <span className="font-semibold">A4</span> และปิด{" "}
-              <span className="font-semibold">Headers and footers</span>
-              {" "}หากขอบยังกว้าง ให้ตั้ง Margins เป็น Minimum หรือ None
+              เลือกกระดาษ <span className="font-semibold">A4</span>{" "}
+              ตั้งระยะขอบเป็นน้อยที่สุดหรือไม่มี
+              และปิดหัวท้ายหน้าในหน้าต่างพิมพ์
             </p>
           </div>
         </div>

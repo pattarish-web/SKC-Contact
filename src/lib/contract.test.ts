@@ -10,6 +10,7 @@ import {
   getConsumableKind,
   isQtyCompatibleWithKind,
   maxSavedSeq,
+  missingRequiredFieldItems,
   missingRequiredFields,
   normalizeContractNo,
   normalizeSowFields,
@@ -250,5 +251,19 @@ const inverted = emptyInputs({
 assert.ok(
   missingRequiredFields(inverted).includes("วันสิ้นสุดต้องไม่ก่อนวันเริ่ม")
 );
+
+const contractorBlank = buildContractContext(
+  emptyInputs({
+    ...sample,
+    client_position: "เจ้าของกิจการ",
+    contractor_position: "",
+  })
+);
+assert.equal(contractorBlank.contractor_position, "กรรมการผู้มีอำนาจ");
+assert.notEqual(contractorBlank.contractor_position, "เจ้าของกิจการ");
+
+const missingItems = missingRequiredFieldItems(incomplete);
+assert.equal(missingItems[0]?.id, "contract_no");
+assert.equal(missingItems[0]?.step, "client");
 
 console.log("contract helpers ok");

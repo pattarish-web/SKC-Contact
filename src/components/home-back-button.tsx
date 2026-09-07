@@ -9,7 +9,7 @@ export function HomeBackButton({
   className,
   size = "sm",
   variant = "outline",
-  label = "หน้าแรก",
+  label = "กลับคลัง",
   onClick,
 }: {
   className?: string;

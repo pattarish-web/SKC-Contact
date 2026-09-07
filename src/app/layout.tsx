@@ -12,7 +12,7 @@ const sarabun = Sarabun({
 export const metadata: Metadata = {
   title: "สั่งการ คลีน | จัดทำสัญญาบริการทำความสะอาด",
   description:
-    "กรอกข้อมูลลูกค้าแล้วพิมพ์สัญญาจ้างทำความสะอาด คลังกลางอยู่ที่ Google Sheet",
+    "กรอกข้อมูลลูกค้าแล้วพิมพ์สัญญาจ้างทำความสะอาด คลังสัญญาอยู่ที่ Google Sheet",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

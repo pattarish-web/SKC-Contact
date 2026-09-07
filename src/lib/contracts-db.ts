@@ -189,11 +189,11 @@ export async function deleteDuplicateContractNumbers(
   keepId: string,
   contractNo: string,
   contractDate?: string
-): Promise<number> {
+): Promise<string[]> {
   const normalized = normalizeContractNo(contractNo, contractDate);
-  if (!normalized) return 0;
+  if (!normalized) return [];
   const rows = await listContracts();
-  let removed = 0;
+  const removed: string[] = [];
   for (const row of rows) {
     if (row.id === keepId) continue;
     const no = normalizeContractNo(
@@ -202,7 +202,7 @@ export async function deleteDuplicateContractNumbers(
     );
     if (no === normalized) {
       await deleteContract(row.id);
-      removed += 1;
+      removed.push(row.id);
     }
   }
   return removed;
