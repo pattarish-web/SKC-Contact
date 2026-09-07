@@ -41,7 +41,7 @@ function SignLine({
   position?: string;
 }) {
   return (
-    <div className="flex min-w-[220px] flex-1 flex-col items-center text-center">
+    <div className="sign-line flex min-w-[220px] flex-1 flex-col items-center text-center">
       <p className="w-full">
         ลงชื่อ
         <span className="mx-1 inline-block min-w-[11rem] border-b border-neutral-800">
@@ -79,7 +79,7 @@ function SignLine({
 
 function SignatureBlock({ ctx }: { ctx: ContractContext }) {
   return (
-    <div className="mt-8 space-y-8">
+    <div className="contract-sign-block mt-8 space-y-8">
       <div className="flex flex-col gap-8 sm:flex-row sm:justify-between">
         <SignLine
           role="ผู้ว่าจ้าง"
@@ -203,6 +203,7 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
 
   return (
     <div id="contract-print" className="contract-print-root">
+      <div className="contract-sheet">
       <article className="contract-page">
         <ContractHeader title="สัญญาบริการทำความสะอาด" />
 
@@ -393,7 +394,9 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
 
         <SignatureBlock ctx={ctx} />
       </article>
+      </div>
 
+      <div className="contract-sheet">
       <article className="contract-page">
         <ContractHeader title="เอกสารแนบท้ายสัญญา 1" />
 
@@ -408,7 +411,7 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
           จำนวนพนักงาน, วันเวลาปฏิบัติหน้าที่ และอัตราค่าบริการ
         </p>
 
-        <div className="mt-2 overflow-x-auto">
+        <div className="contract-table-wrap mt-2 overflow-x-auto">
           <table className="contract-table">
             <thead>
               <tr>
@@ -529,7 +532,9 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
 
         <SignatureBlock ctx={ctx} />
       </article>
+      </div>
 
+      <div className="contract-sheet">
       <article className="contract-page">
         <ContractHeader
           title="เอกสารแนบท้ายสัญญา 2"
@@ -591,6 +596,7 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
 
         <SignatureBlock ctx={ctx} />
       </article>
+      </div>
     </div>
   );
 }

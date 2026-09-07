@@ -135,6 +135,12 @@
   gap: 1.5rem;
 }
 
+.contract-sheet {
+  width: 100%;
+  max-width: 210mm;
+  margin-inline: auto;
+}
+
 .checklist-two-col {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -164,10 +170,13 @@
   background: #fff;
   color: #171717;
   padding: 16mm 16mm 18mm;
+  box-sizing: border-box;
   box-shadow: 0 12px 40px rgb(15 23 42 / 12%);
   font-size: 14.5px;
   line-height: 1.7;
   text-align: justify;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .contract-indent {
@@ -201,6 +210,8 @@
 
 .contract-table {
   width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 12px;
   text-align: center;
@@ -221,40 +232,91 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 12mm 12mm 14mm;
+    margin: 0;
   }
 
   html,
   body {
     background: #fff !important;
     height: auto !important;
+    width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .no-print {
     display: none !important;
   }
 
+  .print-root,
+  .print-document {
+    width: 210mm !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   .checklist-two-col {
     grid-template-columns: 1fr 1fr !important;
-    font-size: 12.5px;
-    line-height: 1.45;
+    font-size: 11.5px;
+    line-height: 1.4;
   }
 
   .contract-print-root {
     gap: 0;
   }
 
-  .contract-page {
-    max-width: none;
-    width: auto;
-    min-height: auto;
-    margin: 0;
-    padding: 0;
-    box-shadow: none;
+  .contract-sheet {
+    width: 210mm !important;
+    height: 297mm !important;
+    max-width: none !important;
+    overflow: hidden !important;
+    break-after: page;
+    page-break-after: always;
   }
 
-  .contract-page + .contract-page {
-    break-before: page;
+  .contract-sheet:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .contract-page {
+    max-width: none;
+    width: 210mm;
+    min-height: auto;
+    margin: 0;
+    padding: 12mm 12mm 12mm;
+    box-shadow: none;
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+
+  .contract-table-wrap {
+    overflow: visible !important;
+  }
+
+  .contract-table {
+    font-size: 10px;
+  }
+
+  .contract-table th,
+  .contract-table td {
+    padding: 3px 3px;
+    overflow-wrap: anywhere;
+  }
+
+  .contract-sign-block {
+    margin-top: 1.2rem !important;
+  }
+
+  .sign-line {
+    min-width: 0 !important;
+  }
+
+  img,
+  svg {
+    max-width: 100%;
+    height: auto;
   }
 
   .print-visible {
