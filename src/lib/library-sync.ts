@@ -1,6 +1,7 @@
 "use client";
 
 import type { ContractInputs } from "@/lib/contract";
+import { normalizeContractNo } from "@/lib/contract";
 import {
   createId,
   listAllAttachments,
@@ -225,19 +226,31 @@ function normalizeContracts(rows: SavedContract[]): SavedContract[] {
   }));
 }
 
-/** Last-write-wins merge by contract id so devices combine libraries. */
+/** Last-write-wins by id, then collapse duplicate contract numbers. */
 export function mergeContractLists(
   local: SavedContract[],
   remote: SavedContract[]
 ): SavedContract[] {
-  const map = new Map<string, SavedContract>();
+  const byId = new Map<string, SavedContract>();
   for (const row of [...normalizeContracts(local), ...normalizeContracts(remote)]) {
-    const prev = map.get(row.id);
+    const prev = byId.get(row.id);
     if (!prev || (row.updatedAt || 0) >= (prev.updatedAt || 0)) {
-      map.set(row.id, row);
+      byId.set(row.id, row);
     }
   }
-  return [...map.values()].sort(
+
+  const byNumber = new Map<string, SavedContract>();
+  for (const row of byId.values()) {
+    const key =
+      normalizeContractNo(row.inputs.contract_no, row.inputs.contract_date) ||
+      row.id;
+    const prev = byNumber.get(key);
+    if (!prev || (row.updatedAt || 0) >= (prev.updatedAt || 0)) {
+      byNumber.set(key, row);
+    }
+  }
+
+  return [...byNumber.values()].sort(
     (a, b) => (a.createdAt || 0) - (b.createdAt || 0)
   );
 }

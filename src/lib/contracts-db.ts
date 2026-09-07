@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  normalizeContractNo,
   planContractRenumber,
   type ContractInputs,
   type ContractRenumberPlan,
@@ -143,6 +144,27 @@ export async function getContract(id: string): Promise<SavedContract | null> {
   return row ?? null;
 }
 
+export async function findContractByNumber(
+  contractNo: string,
+  contractDate?: string
+): Promise<SavedContract | null> {
+  const normalized = normalizeContractNo(contractNo, contractDate);
+  if (!normalized) return null;
+  const rows = await listContracts();
+  return (
+    rows.find(
+      (row) =>
+        normalizeContractNo(row.inputs.contract_no, row.inputs.contract_date) ===
+        normalized
+    ) ?? null
+  );
+}
+
+/**
+ * Upsert a contract. When `options.id` is set, always write that id
+ * (even if the row was temporarily missing after a sync) so edits never
+ * spawn a second record.
+ */
 export async function saveContract(
   inputs: ContractInputs,
   options: { id?: string | null; notes?: string } = {}
@@ -150,7 +172,7 @@ export async function saveContract(
   const existing = options.id ? await getContract(options.id) : null;
   const now = Date.now();
   const record: SavedContract = {
-    id: existing?.id ?? createId("contract"),
+    id: options.id || existing?.id || createId("contract"),
     inputs,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
@@ -160,6 +182,30 @@ export async function saveContract(
   const tx = db.transaction(CONTRACTS_STORE, "readwrite");
   await req(tx.objectStore(CONTRACTS_STORE).put(record));
   return record;
+}
+
+/** Remove other saved rows that share the same contract number. */
+export async function deleteDuplicateContractNumbers(
+  keepId: string,
+  contractNo: string,
+  contractDate?: string
+): Promise<number> {
+  const normalized = normalizeContractNo(contractNo, contractDate);
+  if (!normalized) return 0;
+  const rows = await listContracts();
+  let removed = 0;
+  for (const row of rows) {
+    if (row.id === keepId) continue;
+    const no = normalizeContractNo(
+      row.inputs.contract_no,
+      row.inputs.contract_date
+    );
+    if (no === normalized) {
+      await deleteContract(row.id);
+      removed += 1;
+    }
+  }
+  return removed;
 }
 
 export async function deleteContract(id: string): Promise<void> {

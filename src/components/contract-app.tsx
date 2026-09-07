@@ -13,12 +13,15 @@ import {
   buildSampleInputs,
   emptyInputs,
   missingRequiredFields,
+  normalizeContractNo,
   peekNextContractNo,
   reconcileSeqFromSaved,
   type ContractInputs,
 } from "@/lib/contract";
 import {
   deleteContract,
+  deleteDuplicateContractNumbers,
+  findContractByNumber,
   getContract,
   listContracts,
   saveContract,
@@ -26,6 +29,7 @@ import {
 } from "@/lib/contracts-db";
 import {
   clearDraft,
+  getDraftActiveId,
   loadContractIntoDraft,
   setActiveContractId,
   syncUnsavedDraftContractNo,
@@ -300,25 +304,45 @@ export function ContractApp() {
     try {
       const latest = await listContracts();
       const nos = savedNosOf(latest);
-      // Editing an opened contract always overwrites that record and keeps its number.
-      // New create / renewal copy (no activeId) allocates a fresh number.
-      const editingId = activeId;
-      const payload =
-        editingId != null
-          ? inputs
-          : {
-              ...inputs,
-              contract_no: allocateContractNo(inputs.contract_date, nos),
-            };
-      const saved = await saveContract(payload, { id: editingId });
-      setInputs(saved.inputs);
-      setActiveContractId(saved.id);
+      // Read at click-time so a stale React render cannot drop the editing id.
+      const sessionId = getDraftActiveId() ?? activeId;
+      const normalizedNo = normalizeContractNo(
+        inputs.contract_no,
+        inputs.contract_date
+      );
+      const byNumber = normalizedNo
+        ? await findContractByNumber(normalizedNo, inputs.contract_date)
+        : null;
+
+      let targetId: string | null = null;
+      let payload: ContractInputs = inputs;
+
+      if (sessionId) {
+        // Opened from library / already saved — overwrite, never allocate.
+        const stillThere = latest.some((row) => row.id === sessionId);
+        targetId = stillThere ? sessionId : byNumber?.id ?? sessionId;
+        payload = inputs;
+      } else {
+        // New create or renewal draft (no active editing id).
+        payload = {
+          ...inputs,
+          contract_no: allocateContractNo(inputs.contract_date, nos),
+        };
+        targetId = null;
+      }
+
+      const saved = await saveContract(payload, { id: targetId });
+      await deleteDuplicateContractNumbers(
+        saved.id,
+        saved.inputs.contract_no,
+        saved.inputs.contract_date
+      );
+      loadContractIntoDraft(saved.id, saved.inputs);
       const cloudOk = await quietPushCloud();
       await reloadLocalLibrary();
-      const action =
-        editingId != null
-          ? `อัปเดตสัญญา ${saved.inputs.contract_no} แล้ว`
-          : `สร้างสัญญา ${saved.inputs.contract_no} แล้ว`;
+      const action = sessionId
+        ? `อัปเดตสัญญา ${saved.inputs.contract_no} แล้ว`
+        : `สร้างสัญญา ${saved.inputs.contract_no} แล้ว`;
       setSaveMessage(
         cloudOk
           ? `${action} · เครื่องอื่นเปิดเว็บนี้จะเห็นตาม`

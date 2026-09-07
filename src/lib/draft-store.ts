@@ -169,6 +169,10 @@ export function syncUnsavedDraftContractNo(savedNos: readonly string[]) {
   );
 }
 
+export function getDraftActiveId(): string | null {
+  return snapshot.activeId;
+}
+
 export function loadContractIntoDraft(
   id: string | null,
   inputs: ContractInputs
