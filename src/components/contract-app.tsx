@@ -34,16 +34,13 @@ import {
   writePrintPayload,
 } from "@/lib/draft-store";
 import {
-  buildShareUrl,
-  buildLibrarySnapshot,
   downloadLibraryFile,
   getSyncId,
   importLibraryFile,
-  importLibrarySnapshot,
-  pullLibraryFromCloud,
   pushLibraryToCloud,
   readSyncIdFromLocation,
-  setSyncId,
+  resolveSyncId,
+  syncLibraryWithCloud,
 } from "@/lib/library-sync";
 import { appPath } from "@/lib/paths";
 import { endDateFromStart, monthsFromRange, todayISO } from "@/lib/thai";
@@ -110,15 +107,14 @@ export function ContractApp() {
   const refreshLibrary = useCallback(async () => {
     setLibraryLoading(true);
     try {
-      const bound = getSyncId();
+      const bound = (await resolveSyncId()) || getSyncId();
       if (bound) {
         try {
-          const remote = await pullLibraryFromCloud(bound);
-          const local = await buildLibrarySnapshot();
-          if (remote.exportedAt >= local.exportedAt) {
-            await importLibrarySnapshot(remote);
-          } else {
-            await pushLibraryToCloud(bound);
+          const result = await syncLibraryWithCloud(bound);
+          if (result === "pulled") {
+            setSyncMessage("ซิงก์จากคลาวด์แล้ว — คลังตรงกับเครื่องอื่น");
+          } else if (result === "pushed") {
+            setSyncMessage("อัปเดตคลังคลาวด์แล้ว — เครื่องอื่นเปิดเว็บนี้จะเห็นเหมือนกัน");
           }
         } catch {
           // Keep local library if cloud is temporarily unavailable.
@@ -142,10 +138,11 @@ export function ContractApp() {
   }, []);
 
   async function quietPushCloud() {
-    const id = getSyncId();
+    const id = (await resolveSyncId()) || getSyncId();
     if (!id) return;
     try {
       await pushLibraryToCloud(id);
+      setSyncIdState(id);
     } catch {
       // Keep local save successful even if cloud push fails.
     }
@@ -156,22 +153,42 @@ export function ContractApp() {
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
-          const fromUrl = readSyncIdFromLocation();
-          if (fromUrl) {
-            setSyncMessage("กำลังโหลดคลังจากลิงก์ซิงก์…");
-            const snapshot = await pullLibraryFromCloud(fromUrl);
-            if (cancelled) return;
-            await importLibrarySnapshot(snapshot);
-            setSyncIdState(fromUrl);
-            setSyncMessage(
-              `โหลดคลังจากลิงก์แล้ว ${snapshot.contracts.length} สัญญา — บันทึกต่อไปจะอัปเดตลิงก์นี้ด้วย`
-            );
-            // Clean sync param from visible URL but keep local binding.
+          setSyncMessage("กำลังซิงก์คลังอัตโนมัติ…");
+          const bound = await resolveSyncId();
+          if (cancelled) return;
+          if (bound) {
+            try {
+              const result = await syncLibraryWithCloud(bound);
+              if (cancelled) return;
+              setSyncIdState(bound);
+              if (result === "pulled") {
+                setSyncMessage(
+                  "โหลดคลังร่วมของบริษัทแล้ว — บันทึกสัญญาจะอัปเดตให้เครื่องอื่นอัตโนมัติ"
+                );
+              } else if (result === "pushed") {
+                setSyncMessage(
+                  "อัปโหลดคลังขึ้นคลาวด์แล้ว — เครื่องอื่นเปิดเว็บนี้จะเห็นสัญญาชุดเดียวกัน"
+                );
+              } else {
+                setSyncMessage(
+                  "ซิงก์อัตโนมัติพร้อมแล้ว — บันทึกสัญญาแล้วเครื่องอื่นเห็นตาม"
+                );
+              }
+            } catch {
+              setSyncIdState(bound);
+              setSyncMessage(
+                "ซิงก์คลาวด์ชั่วคราวใช้ไม่ได้ — ยังบันทึกในเครื่องนี้ได้ และลองกดรีเฟรชภายหลัง"
+              );
+            }
+          } else {
+            setSyncIdState(null);
+            setSyncMessage(null);
+          }
+
+          if (readSyncIdFromLocation()) {
             const url = new URL(window.location.href);
             url.searchParams.delete("sync");
             window.history.replaceState({}, "", url.toString());
-          } else {
-            setSyncIdState(getSyncId());
           }
 
           const { rows, plan } = await renumberSavedContractsFromOne();
@@ -388,9 +405,10 @@ export function ContractApp() {
     try {
       setLibraryLoading(true);
       const result = await importLibraryFile(file);
+      await quietPushCloud();
       await refreshLibrary();
       setSyncMessage(
-        `นำเข้าแล้ว ${result.contracts} สัญญา (${result.attachments} ไฟล์แนบ)`
+        `นำเข้าแล้ว ${result.contracts} สัญญา (${result.attachments} ไฟล์แนบ) และอัปโหลดขึ้นคลังร่วมแล้ว`
       );
     } catch (error) {
       window.alert(
@@ -400,59 +418,40 @@ export function ContractApp() {
     }
   }
 
-  async function handleCreateShareLink() {
+  async function handleCopySiteLink() {
+    const url =
+      typeof window !== "undefined"
+        ? `${window.location.origin}${window.location.pathname}`
+        : "https://pattarish-web.github.io/SKC-Contact/";
     try {
-      setSyncMessage("กำลังสร้างลิงก์ซิงก์…");
-      const id = await pushLibraryToCloud(null, { forceNew: true });
-      setSyncId(id);
-      setSyncIdState(id);
-      const shareUrl = buildShareUrl(id);
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        setSyncMessage(
-          "สร้างลิงก์ซิงก์แล้ว และคัดลอกไว้ในคลิปบอร์ด — ส่งลิงก์นี้ให้เครื่องอื่น"
-        );
-      } catch {
-        setSyncMessage(`สร้างลิงก์แล้ว: ${shareUrl}`);
-      }
-      window.prompt("คัดลอกลิงก์ซิงก์นี้ส่งให้เครื่องอื่น", shareUrl);
-    } catch (error) {
-      setSyncMessage(null);
-      window.alert(
-        `${
-          error instanceof Error ? error.message : "สร้างลิงก์ซิงก์ไม่สำเร็จ"
-        }\n\nถ้าใช้คลาวด์ไม่ได้ ให้กด “ส่งออกไฟล์” แล้วส่งไฟล์แทน`
-      );
-    }
-  }
-
-  async function handleCopyShareLink() {
-    const id = getSyncId();
-    if (!id) {
-      window.alert("ยังไม่มีลิงก์ซิงก์ — กดสร้างลิงก์ซิงก์ก่อน");
-      return;
-    }
-    const shareUrl = buildShareUrl(id);
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setSyncMessage("คัดลอกลิงก์ซิงก์แล้ว");
+      await navigator.clipboard.writeText(url);
+      setSyncMessage("คัดลอกลิงก์เว็บแล้ว — เปิดลิงก์นี้บนเครื่องอื่นจะซิงก์คลังอัตโนมัติ");
     } catch {
-      window.prompt("คัดลอกลิงก์ซิงก์", shareUrl);
+      window.prompt("คัดลอกลิงก์เว็บ", url);
     }
   }
 
   async function handlePushCloud() {
     try {
-      setSyncMessage("กำลังอัปเดตคลังบนลิงก์ซิงก์…");
-      const id = await pushLibraryToCloud(getSyncId());
+      setSyncMessage("กำลังซิงก์คลังขึ้นคลาวด์…");
+      const id = (await resolveSyncId()) || getSyncId();
+      if (!id) {
+        throw new Error("ยังไม่พบรหัสคลังร่วมของบริษัท");
+      }
+      await pushLibraryToCloud(id);
       setSyncIdState(id);
-      setSyncMessage("อัปเดตคลังบนลิงก์ซิงก์แล้ว");
+      setSyncMessage("ซิงก์คลังขึ้นคลาวด์แล้ว");
     } catch (error) {
       window.alert(
-        error instanceof Error ? error.message : "อัปเดตคลังบนลิงก์ไม่สำเร็จ"
+        error instanceof Error ? error.message : "ซิงก์คลังไม่สำเร็จ"
       );
       setSyncMessage(null);
     }
+  }
+
+  async function handleRefreshSync() {
+    setSyncMessage("กำลังซิงก์คลัง…");
+    await refreshLibrary();
   }
 
   function startNew() {
@@ -538,9 +537,9 @@ export function ContractApp() {
           onDelete={(id) => void removeSaved(id)}
           onExportFile={() => void handleExportLibrary()}
           onImportFile={(file) => void handleImportLibrary(file)}
-          onCreateShareLink={() => void handleCreateShareLink()}
-          onCopyShareLink={() => void handleCopyShareLink()}
+          onCopySiteLink={() => void handleCopySiteLink()}
           onPushCloud={() => void handlePushCloud()}
+          onRefreshSync={() => void handleRefreshSync()}
         />
       ) : (
         <div className="app-shell mx-auto grid max-w-[1600px] grid-cols-1 gap-6 px-4 py-4 pb-28 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)] lg:items-start lg:px-6 lg:py-6 lg:pb-6">

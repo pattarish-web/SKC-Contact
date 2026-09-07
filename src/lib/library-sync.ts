@@ -10,6 +10,7 @@ import {
   type ContractAttachment,
   type SavedContract,
 } from "@/lib/contracts-db";
+import { withBasePath } from "@/lib/paths";
 
 export const LIBRARY_SYNC_KEY = "sanggan-clean-library-sync-id";
 export const LIBRARY_SNAPSHOT_VERSION = 1 as const;
@@ -25,9 +26,16 @@ export type LibrarySnapshot = {
   attachments: ExportedAttachment[];
 };
 
-const JSONBLOB_API = "https://jsonblob.com/api/jsonBlob";
-const MAX_CLOUD_ATTACHMENT_BYTES = 400_000;
-const MAX_CLOUD_TOTAL_BYTES = 1_800_000;
+type SyncConfig = {
+  syncId?: string;
+  provider?: string;
+};
+
+/** Free JSON bin with CORS + overwrite (PUT). ~100KB payload limit. */
+const CLOUD_API = "https://extendsclass.com/api/json-storage/bin";
+/** Keep cloud payload under the host limit; attachments stay local / in file export. */
+const MAX_CLOUD_ATTACHMENT_BYTES = 12_000;
+const MAX_CLOUD_TOTAL_BYTES = 90_000;
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -50,6 +58,20 @@ function base64ToBytes(base64: string): Uint8Array {
 async function blobToBase64(blob: Blob): Promise<string> {
   const buffer = await blob.arrayBuffer();
   return bytesToBase64(new Uint8Array(buffer));
+}
+
+function contentTimestamp(
+  contracts: SavedContract[],
+  attachments: { createdAt?: number }[]
+): number {
+  let max = 0;
+  for (const row of contracts) {
+    max = Math.max(max, row.updatedAt || 0, row.createdAt || 0);
+  }
+  for (const row of attachments) {
+    max = Math.max(max, row.createdAt || 0);
+  }
+  return max;
 }
 
 export function getSyncId(): string | null {
@@ -85,6 +107,39 @@ export function buildShareUrl(syncId: string): string {
   return url.toString();
 }
 
+export async function loadSharedSyncConfig(): Promise<string | null> {
+  try {
+    const res = await fetch(withBasePath("/sync-config.json"), {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as SyncConfig;
+    const id = data.syncId?.trim();
+    return id || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Company site always binds to the shared sync id from sync-config.json.
+ * Optional `?sync=` overrides for a custom bin.
+ */
+export async function resolveSyncId(): Promise<string | null> {
+  const fromUrl = readSyncIdFromLocation();
+  if (fromUrl) {
+    setSyncId(fromUrl);
+    return fromUrl;
+  }
+  const shared = await loadSharedSyncConfig();
+  if (shared) {
+    setSyncId(shared);
+    return shared;
+  }
+  return getSyncId();
+}
+
 export async function buildLibrarySnapshot(options?: {
   forCloud?: boolean;
 }): Promise<LibrarySnapshot> {
@@ -99,6 +154,10 @@ export async function buildLibrarySnapshot(options?: {
       if (total + row.size > MAX_CLOUD_TOTAL_BYTES) continue;
     }
     const dataBase64 = await blobToBase64(row.blob);
+    const encodedSize = Math.ceil((dataBase64.length * 3) / 4);
+    if (options?.forCloud && total + encodedSize > MAX_CLOUD_TOTAL_BYTES) {
+      continue;
+    }
     attachments.push({
       id: row.id,
       contractId: row.contractId,
@@ -108,12 +167,12 @@ export async function buildLibrarySnapshot(options?: {
       createdAt: row.createdAt,
       dataBase64,
     });
-    total += row.size;
+    total += options?.forCloud ? encodedSize : row.size;
   }
 
   return {
     version: LIBRARY_SNAPSHOT_VERSION,
-    exportedAt: Date.now(),
+    exportedAt: contentTimestamp(contracts, attachments),
     contracts,
     attachments,
   };
@@ -153,7 +212,6 @@ export async function importLibrarySnapshot(
   for (const row of snapshot.attachments) {
     if (!row.dataBase64) continue;
     const bytes = base64ToBytes(row.dataBase64);
-    // Uint8Array is a valid BlobPart at runtime
     const blob = new Blob([new Uint8Array(bytes)], {
       type: row.mimeType || "application/octet-stream",
     });
@@ -199,36 +257,60 @@ export async function importLibraryFile(file: File): Promise<{
   return importLibrarySnapshot(snapshot);
 }
 
-function extractBlobId(location: string | null): string | null {
-  if (!location) return null;
-  const parts = location.split("/").filter(Boolean);
-  return parts[parts.length - 1] || null;
+async function cloudGet(syncId: string): Promise<LibrarySnapshot> {
+  const res = await fetch(`${CLOUD_API}/${encodeURIComponent(syncId)}?t=${Date.now()}`, {
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) {
+    throw new Error("โหลดคลังคลาวด์ไม่สำเร็จ");
+  }
+  return parseLibrarySnapshot(await res.json());
 }
 
-export async function pushLibraryToCloud(
-  syncId?: string | null,
-  options?: { forceNew?: boolean }
-): Promise<string> {
-  const snapshot = await buildLibrarySnapshot({ forCloud: true });
-  const existing = options?.forceNew ? null : syncId || getSyncId();
-
-  if (existing) {
-    const res = await fetch(`${JSONBLOB_API}/${existing}`, {
+async function cloudPut(syncId: string, snapshot: LibrarySnapshot): Promise<void> {
+  const body = JSON.stringify(snapshot);
+  if (body.length > MAX_CLOUD_TOTAL_BYTES) {
+    // Drop attachments and retry once for contract text only.
+    const slim: LibrarySnapshot = {
+      ...snapshot,
+      attachments: [],
+    };
+    const slimBody = JSON.stringify(slim);
+    if (slimBody.length > MAX_CLOUD_TOTAL_BYTES) {
+      throw new Error(
+        "คลังใหญ่เกินขีดจำกัดคลาวด์ — ส่งออกไฟล์แทน หรือลบสัญญาเก่าบางส่วน"
+      );
+    }
+    const res = await fetch(`${CLOUD_API}/${encodeURIComponent(syncId)}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify(snapshot),
+      body: slimBody,
     });
     if (!res.ok) {
-      throw new Error("อัปเดตคลังบนคลาวด์ไม่สำเร็จ");
+      throw new Error("อัปเดตคลังคลาวด์ไม่สำเร็จ");
     }
-    setSyncId(existing);
-    return existing;
+    return;
   }
 
-  const res = await fetch(JSONBLOB_API, {
+  const res = await fetch(`${CLOUD_API}/${encodeURIComponent(syncId)}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body,
+  });
+  if (!res.ok) {
+    throw new Error("อัปเดตคลังคลาวด์ไม่สำเร็จ");
+  }
+}
+
+async function cloudCreate(snapshot: LibrarySnapshot): Promise<string> {
+  const res = await fetch(CLOUD_API, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -237,14 +319,30 @@ export async function pushLibraryToCloud(
     body: JSON.stringify(snapshot),
   });
   if (!res.ok) {
-    throw new Error("สร้างลิงก์ซิงก์ไม่สำเร็จ");
+    throw new Error("สร้างคลังคลาวด์ไม่สำเร็จ");
   }
-  const id =
-    extractBlobId(res.headers.get("Location")) ||
-    extractBlobId(res.headers.get("location"));
-  if (!id) {
-    throw new Error("สร้างลิงก์ซิงก์ไม่สำเร็จ (ไม่ได้รับรหัสคลัง)");
+  const data = (await res.json()) as { id?: string };
+  if (!data.id) {
+    throw new Error("สร้างคลังคลาวด์ไม่สำเร็จ (ไม่ได้รับรหัส)");
   }
+  return data.id;
+}
+
+export async function pushLibraryToCloud(
+  syncId?: string | null,
+  options?: { forceNew?: boolean }
+): Promise<string> {
+  const snapshot = await buildLibrarySnapshot({ forCloud: true });
+  snapshot.exportedAt = Math.max(snapshot.exportedAt, Date.now());
+  const existing = options?.forceNew ? null : syncId || getSyncId();
+
+  if (existing) {
+    await cloudPut(existing, snapshot);
+    setSyncId(existing);
+    return existing;
+  }
+
+  const id = await cloudCreate(snapshot);
   setSyncId(id);
   return id;
 }
@@ -252,13 +350,35 @@ export async function pushLibraryToCloud(
 export async function pullLibraryFromCloud(
   syncId: string
 ): Promise<LibrarySnapshot> {
-  const res = await fetch(`${JSONBLOB_API}/${syncId}`, {
-    headers: { Accept: "application/json" },
-  });
-  if (!res.ok) {
-    throw new Error("โหลดคลังจากลิงก์ซิงก์ไม่สำเร็จ");
-  }
-  const snapshot = parseLibrarySnapshot(await res.json());
+  const snapshot = await cloudGet(syncId);
   setSyncId(syncId);
   return snapshot;
+}
+
+/** Pull/push so this device matches the shared company library. */
+export async function syncLibraryWithCloud(
+  syncId: string
+): Promise<"pulled" | "pushed" | "noop"> {
+  const remote = await pullLibraryFromCloud(syncId);
+  const local = await buildLibrarySnapshot();
+  const localStamp = local.exportedAt;
+  const remoteStamp = remote.exportedAt || 0;
+
+  if (remote.contracts.length > 0 && local.contracts.length === 0) {
+    await importLibrarySnapshot(remote);
+    return "pulled";
+  }
+  if (local.contracts.length > 0 && remote.contracts.length === 0) {
+    await pushLibraryToCloud(syncId);
+    return "pushed";
+  }
+  if (remoteStamp > localStamp) {
+    await importLibrarySnapshot(remote);
+    return "pulled";
+  }
+  if (localStamp > remoteStamp) {
+    await pushLibraryToCloud(syncId);
+    return "pushed";
+  }
+  return "noop";
 }

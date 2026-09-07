@@ -10,8 +10,8 @@ import {
   Download,
   FilePlus2,
   FolderOpen,
-  Link2,
   Pencil,
+  RefreshCw,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -36,9 +36,9 @@ export function ContractLibrary({
   onDelete,
   onExportFile,
   onImportFile,
-  onCreateShareLink,
-  onCopyShareLink,
+  onCopySiteLink,
   onPushCloud,
+  onRefreshSync,
 }: {
   items: SavedContract[];
   loading: boolean;
@@ -51,9 +51,9 @@ export function ContractLibrary({
   onDelete: (id: string) => void;
   onExportFile: () => void;
   onImportFile: (file: File) => void;
-  onCreateShareLink: () => void;
-  onCopyShareLink: () => void;
+  onCopySiteLink: () => void;
   onPushCloud: () => void;
+  onRefreshSync: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -72,44 +72,31 @@ export function ContractLibrary({
         </Button>
       </div>
 
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-950">
-        <p className="font-medium">ข้อมูลคลังเก็บบนเครื่องนี้เป็นหลัก</p>
-        <p className="mt-1 text-xs leading-5 text-amber-900/90">
-          เปิดแค่ลิงก์เว็บอย่างเดียว เครื่องอื่นจะยังไม่เห็นสัญญา —
-          ให้กด “สร้างลิงก์ซิงก์” แล้วส่งลิงก์นั้น หรือส่งไฟล์คลังไปเปิดบนเครื่องอื่น
+      <div className="rounded-xl border border-teal-200 bg-teal-50/80 px-3 py-3 text-sm text-teal-950">
+        <p className="font-medium">ซิงก์อัตโนมัติข้ามเครื่อง</p>
+        <p className="mt-1 text-xs leading-5 text-teal-900/90">
+          เปิดลิงก์เว็บบริษัทเครื่องไหนก็ได้ คลังสัญญาจะดึง/อัปเดตให้อัตโนมัติ
+          เมื่อกดบันทึก ลบ หรือคัดลอกสัญญา — ไฟล์แนบขนาดใหญ่ยังเก็บบนเครื่อง
+          (สำรองด้วยส่งออกไฟล์ได้)
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
+          <Button type="button" size="sm" onClick={onRefreshSync}>
+            <RefreshCw data-icon="inline-start" />
+            ซิงก์ตอนนี้
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={onPushCloud}>
+            <CloudUpload data-icon="inline-start" />
+            อัปโหลดคลัง
+          </Button>
           <Button
             type="button"
             size="sm"
-            onClick={onCreateShareLink}
-            title="อัปโหลดคลังแล้วได้ลิงก์ให้เครื่องอื่นเปิดตาม"
+            variant="outline"
+            onClick={onCopySiteLink}
           >
-            <Link2 data-icon="inline-start" />
-            สร้างลิงก์ซิงก์
+            <Copy data-icon="inline-start" />
+            คัดลอกลิงก์เว็บ
           </Button>
-          {syncId ? (
-            <>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={onCopyShareLink}
-              >
-                <Copy data-icon="inline-start" />
-                คัดลอกลิงก์ซิงก์
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={onPushCloud}
-              >
-                <CloudUpload data-icon="inline-start" />
-                อัปเดตคลังบนลิงก์
-              </Button>
-            </>
-          ) : null}
           <Button
             type="button"
             size="sm"
@@ -141,8 +128,8 @@ export function ContractLibrary({
           />
         </div>
         {syncId ? (
-          <p className="mt-2 break-all text-[11px] text-amber-900/80">
-            รหัสซิงก์: {syncId}
+          <p className="mt-2 text-[11px] text-teal-900/70">
+            คลังร่วมบริษัทพร้อมใช้งาน
           </p>
         ) : null}
         {syncMessage ? (
@@ -167,8 +154,7 @@ export function ContractLibrary({
             ยังไม่มีสัญญาที่บันทึก
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            สร้างสัญญาแล้วกด “บันทึกสัญญา” เพื่อเก็บไว้เปิดดูภายหลัง
-            หรือนำเข้าจากไฟล์/ลิงก์ซิงก์
+            สร้างสัญญาแล้วกด “บันทึกสัญญา” เพื่อเก็บไว้ — เครื่องอื่นที่เปิดเว็บนี้จะเห็นตาม
           </p>
           <Button className="mt-4" onClick={onNew}>
             เริ่มสร้างสัญญา
@@ -215,8 +201,8 @@ export function ContractLibrary({
                     เปิดแก้ไข
                   </Button>
                   <Button
-                    variant="destructive"
                     size="sm"
+                    variant="destructive"
                     onClick={() => onDelete(item.id)}
                   >
                     <Trash2 data-icon="inline-start" />
