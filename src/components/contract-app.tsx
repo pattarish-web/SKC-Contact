@@ -120,7 +120,7 @@ export function ContractApp() {
     setLibrary(rows);
     setLibraryError(null);
     setLibraryLoading(false);
-    setSyncHint(`คลังกลางพร้อมแล้ว ${rows.length} สัญญา · อัปเดตอัตโนมัติ`);
+    setSyncHint(`Google Sheet พร้อมแล้ว ${rows.length} สัญญา · อัปเดตทุก 4 วินาที`);
   }, []);
 
   const reloadLocalLibrary = useCallback(async () => {
@@ -141,7 +141,7 @@ export function ContractApp() {
     } catch {
       try {
         await reloadLocalLibrary();
-        setLibraryError("เชื่อมคลังกลางไม่ได้ — แสดงข้อมูลในเครื่องนี้");
+        setLibraryError("เชื่อม Google Sheet ไม่ได้ — แสดงข้อมูลในเครื่องนี้");
       } catch {
         setLibraryError("โหลดคลังสัญญาไม่สำเร็จ");
         setLibraryLoading(false);
@@ -179,7 +179,7 @@ export function ContractApp() {
         if (cancelled) return;
         try {
           await reloadLocalLibrary();
-          setLibraryError("เชื่อมคลังกลางไม่ได้ — แสดงข้อมูลในเครื่องนี้");
+          setLibraryError("เชื่อม Google Sheet ไม่ได้ — แสดงข้อมูลในเครื่องนี้");
         } catch {
           setLibraryError("โหลดคลังสัญญาไม่สำเร็จ");
           setLibraryLoading(false);
@@ -193,7 +193,7 @@ export function ContractApp() {
       (connected) => {
         setLiveConnected(connected);
         if (!connected) {
-          setSyncHint("ขาดการเชื่อมคลังกลาง — กำลังต่อใหม่");
+          setSyncHint("ขาดการเชื่อม Google Sheet — กำลังลองใหม่");
         }
       }
     );
@@ -326,8 +326,8 @@ export function ContractApp() {
         : `สร้างสัญญา ${saved.inputs.contract_no} แล้ว`;
       setSaveMessage(
         cloudOk
-          ? `${action} · เครื่องอื่นเห็นทันที`
-          : `${action} ในเครื่อง · แต่ส่งขึ้นคลังกลางไม่สำเร็จ ลองบันทึกอีกครั้ง`
+          ? `${action} · ขึ้น Google Sheet แล้ว`
+          : `${action} ในเครื่อง · ยังส่งขึ้นชีตไม่ได้ วางลิงก์เว็บแอปที่หน้าคลังก่อน`
       );
     } catch {
       window.alert("บันทึกสัญญาไม่สำเร็จ");
@@ -357,7 +357,7 @@ export function ContractApp() {
       await applyLive(next);
     } catch {
       await reloadLocalLibrary();
-      window.alert("ลบในเครื่องแล้ว แต่คลังกลางยังไม่ทัน");
+      window.alert("ลบในเครื่องแล้ว แต่ Google Sheet ยังไม่ทัน");
     }
   }
 
@@ -403,7 +403,7 @@ export function ContractApp() {
   async function handleImportLibrary(file: File) {
     if (
       !window.confirm(
-        "นำเข้าจะแทนที่คลังกลางทั้งหมด ทุกเครื่องจะเห็นชุดนี้ ต้องการทำต่อหรือไม่?"
+        "นำเข้าจะแทนที่สัญญาทั้งหมดใน Google Sheet ต้องการทำต่อหรือไม่?"
       )
     ) {
       return;
@@ -415,7 +415,7 @@ export function ContractApp() {
       const next = await replaceCentralLibrary(rows);
       await applyLive(next);
       setSaveMessage(
-        `นำเข้าแล้ว ${result.contracts} สัญญาเข้าคลังกลาง (${result.attachments} ไฟล์แนบในเครื่องนี้)`
+        `นำเข้าแล้ว ${result.contracts} สัญญาเข้า Google Sheet (${result.attachments} ไฟล์แนบในเครื่องนี้)`
       );
       setView("library");
     } catch (error) {
@@ -442,7 +442,7 @@ export function ContractApp() {
 
   const subtitle =
     view === "library"
-      ? "คลังกลาง · ทุกเครื่องเห็นชุดเดียวกันทันที"
+      ? "คลังกลาง Google Sheet · ทุกเครื่องเห็นชุดเดียวกัน"
       : view === "review"
         ? "รีวิวเอกสารและไฟล์แนบ"
         : "จัดทำสัญญาบริการทำความสะอาด";
