@@ -133,7 +133,8 @@ function itemBlocks(
   prefix: string,
   heading: string,
   items: string[],
-  fallback: string
+  fallback: string,
+  columns: 1 | 2 = 1
 ): PageBlock[] {
   const nodes: PageBlock[] = [
     {
@@ -147,6 +148,24 @@ function itemBlocks(
       key: `${prefix}-empty`,
       node: <p className="leading-6 text-neutral-500">{fallback}</p>,
     });
+    return nodes;
+  }
+  if (columns === 2) {
+    for (let index = 0; index < items.length; index += 2) {
+      const row = items.slice(index, index + 2);
+      nodes.push({
+        key: `${prefix}-${index}`,
+        node: (
+          <ul className="checklist-two-col">
+            {row.map((item, offset) => (
+              <li key={`${prefix}-${index}-${offset}`}>
+                <span className="font-semibold">{item}</span>
+              </li>
+            ))}
+          </ul>
+        ),
+      });
+    }
     return nodes;
   }
   items.forEach((item, index) => {
@@ -808,19 +827,22 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
             "a2-tools",
             "2.1 อุปกรณ์ / เครื่องมือทั่วไป",
             splitLines(ctx.sow_tools),
-            ".............................................................................................................................................."
+            "..............................................................................................................................................",
+            2
           ),
           ...itemBlocks(
             "a2-elec",
             "2.2 เครื่องใช้ไฟฟ้า",
             splitLines(ctx.sow_electrical),
-            ".............................................................................................................................................."
+            "..............................................................................................................................................",
+            2
           ),
           ...itemBlocks(
             "a2-mat",
             "2.3 วัสดุและน้ำยาที่ใช้ร่วมกัน",
             splitLines(ctx.sow_shared_materials),
-            ".............................................................................................................................................."
+            "..............................................................................................................................................",
+            2
           ),
           ...itemBlocks(
             "a2-cons",
