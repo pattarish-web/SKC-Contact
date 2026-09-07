@@ -98,8 +98,6 @@ export function ContractApp() {
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
-  const [syncId, setSyncIdState] = useState<string | null>(null);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   const ctx = useMemo(() => buildContractContext(inputs), [inputs]);
   const missing = useMemo(() => missingRequiredFields(inputs), [inputs]);
@@ -110,12 +108,7 @@ export function ContractApp() {
       const bound = (await resolveSyncId()) || getSyncId();
       if (bound) {
         try {
-          const result = await syncLibraryWithCloud(bound);
-          if (result === "pulled") {
-            setSyncMessage("ซิงก์จากคลาวด์แล้ว — คลังตรงกับเครื่องอื่น");
-          } else if (result === "pushed") {
-            setSyncMessage("อัปเดตคลังคลาวด์แล้ว — เครื่องอื่นเปิดเว็บนี้จะเห็นเหมือนกัน");
-          }
+          await syncLibraryWithCloud(bound);
         } catch {
           // Keep local library if cloud is temporarily unavailable.
         }
@@ -129,7 +122,6 @@ export function ContractApp() {
       syncUnsavedDraftContractNo(nos);
       setLibrary(rows);
       setLibraryError(null);
-      setSyncIdState(getSyncId());
     } catch {
       setLibraryError("โหลดคลังสัญญาไม่สำเร็จ");
     } finally {
@@ -137,12 +129,24 @@ export function ContractApp() {
     }
   }, []);
 
+  const reloadLocalLibrary = useCallback(async () => {
+    const { rows, plan } = await renumberSavedContractsFromOne();
+    for (const item of plan) {
+      patchActiveDraftContractNo(item.id, item.to);
+    }
+    const nos = savedNosOf(rows);
+    reconcileSeqFromSaved(nos);
+    syncUnsavedDraftContractNo(nos);
+    setLibrary(rows);
+    setLibraryError(null);
+    setLibraryLoading(false);
+  }, []);
+
   async function quietPushCloud() {
     const id = (await resolveSyncId()) || getSyncId();
     if (!id) return;
     try {
       await pushLibraryToCloud(id);
-      setSyncIdState(id);
     } catch {
       // Keep local save successful even if cloud push fails.
     }
@@ -153,36 +157,15 @@ export function ContractApp() {
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
-          setSyncMessage("กำลังซิงก์คลังอัตโนมัติ…");
-          const bound = await resolveSyncId();
+          await resolveSyncId();
           if (cancelled) return;
+          const bound = getSyncId();
           if (bound) {
             try {
-              const result = await syncLibraryWithCloud(bound);
-              if (cancelled) return;
-              setSyncIdState(bound);
-              if (result === "pulled") {
-                setSyncMessage(
-                  "โหลดคลังร่วมของบริษัทแล้ว — บันทึกสัญญาจะอัปเดตให้เครื่องอื่นอัตโนมัติ"
-                );
-              } else if (result === "pushed") {
-                setSyncMessage(
-                  "อัปโหลดคลังขึ้นคลาวด์แล้ว — เครื่องอื่นเปิดเว็บนี้จะเห็นสัญญาชุดเดียวกัน"
-                );
-              } else {
-                setSyncMessage(
-                  "ซิงก์อัตโนมัติพร้อมแล้ว — บันทึกสัญญาแล้วเครื่องอื่นเห็นตาม"
-                );
-              }
+              await syncLibraryWithCloud(bound);
             } catch {
-              setSyncIdState(bound);
-              setSyncMessage(
-                "ซิงก์คลาวด์ชั่วคราวใช้ไม่ได้ — ยังบันทึกในเครื่องนี้ได้ และลองกดรีเฟรชภายหลัง"
-              );
+              // Offline / cloud down — still show local library.
             }
-          } else {
-            setSyncIdState(null);
-            setSyncMessage(null);
           }
 
           if (readSyncIdFromLocation()) {
@@ -209,7 +192,6 @@ export function ContractApp() {
                 ? error.message
                 : "โหลดคลังสัญญาไม่สำเร็จ"
             );
-            setSyncMessage(null);
             setLibraryLoading(false);
             try {
               const { rows } = await renumberSavedContractsFromOne();
@@ -320,13 +302,13 @@ export function ContractApp() {
       const saved = await saveContract(payload, { id: activeId });
       setInputs(saved.inputs);
       setActiveContractId(saved.id);
+      await quietPushCloud();
+      await reloadLocalLibrary();
       setSaveMessage(
         `บันทึกแล้ว · ${saved.inputs.contract_no} · ${new Date(
           saved.updatedAt
         ).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}`
       );
-      await refreshLibrary();
-      await quietPushCloud();
     } catch {
       window.alert("บันทึกสัญญาไม่สำเร็จ");
     }
@@ -350,8 +332,8 @@ export function ContractApp() {
     await deleteContract(id);
     const remaining = library.filter((r) => r.id !== id);
     if (activeId === id) clearDraft(savedNosOf(remaining));
-    await refreshLibrary();
     await quietPushCloud();
+    await reloadLocalLibrary();
   }
 
   async function duplicateSaved(id: string) {
@@ -371,8 +353,8 @@ export function ContractApp() {
       };
       const saved = await saveContract(payload);
       loadContractIntoDraft(saved.id, saved.inputs);
-      await refreshLibrary();
       await quietPushCloud();
+      await reloadLocalLibrary();
       setView("editor");
       setPane("form");
       setSaveMessage(
@@ -388,7 +370,7 @@ export function ContractApp() {
   async function handleExportLibrary() {
     try {
       await downloadLibraryFile();
-      setSyncMessage("ส่งออกไฟล์คลังแล้ว — ส่งไฟล์นี้ไปเปิดบนเครื่องอื่นได้");
+      setSaveMessage("ส่งออกไฟล์คลังแล้ว");
     } catch {
       window.alert("ส่งออกคลังไม่สำเร็จ");
     }
@@ -406,52 +388,17 @@ export function ContractApp() {
       setLibraryLoading(true);
       const result = await importLibraryFile(file);
       await quietPushCloud();
-      await refreshLibrary();
-      setSyncMessage(
-        `นำเข้าแล้ว ${result.contracts} สัญญา (${result.attachments} ไฟล์แนบ) และอัปโหลดขึ้นคลังร่วมแล้ว`
+      await reloadLocalLibrary();
+      setSaveMessage(
+        `นำเข้าแล้ว ${result.contracts} สัญญา (${result.attachments} ไฟล์แนบ)`
       );
+      setView("library");
     } catch (error) {
       window.alert(
         error instanceof Error ? error.message : "นำเข้าคลังไม่สำเร็จ"
       );
       setLibraryLoading(false);
     }
-  }
-
-  async function handleCopySiteLink() {
-    const url =
-      typeof window !== "undefined"
-        ? `${window.location.origin}${window.location.pathname}`
-        : "https://pattarish-web.github.io/SKC-Contact/";
-    try {
-      await navigator.clipboard.writeText(url);
-      setSyncMessage("คัดลอกลิงก์เว็บแล้ว — เปิดลิงก์นี้บนเครื่องอื่นจะซิงก์คลังอัตโนมัติ");
-    } catch {
-      window.prompt("คัดลอกลิงก์เว็บ", url);
-    }
-  }
-
-  async function handlePushCloud() {
-    try {
-      setSyncMessage("กำลังซิงก์คลังขึ้นคลาวด์…");
-      const id = (await resolveSyncId()) || getSyncId();
-      if (!id) {
-        throw new Error("ยังไม่พบรหัสคลังร่วมของบริษัท");
-      }
-      await pushLibraryToCloud(id);
-      setSyncIdState(id);
-      setSyncMessage("ซิงก์คลังขึ้นคลาวด์แล้ว");
-    } catch (error) {
-      window.alert(
-        error instanceof Error ? error.message : "ซิงก์คลังไม่สำเร็จ"
-      );
-      setSyncMessage(null);
-    }
-  }
-
-  async function handleRefreshSync() {
-    setSyncMessage("กำลังซิงก์คลัง…");
-    await refreshLibrary();
   }
 
   function startNew() {
@@ -529,17 +476,12 @@ export function ContractApp() {
           items={library}
           loading={libraryLoading}
           error={libraryError}
-          syncId={syncId}
-          syncMessage={syncMessage}
           onNew={startNew}
           onOpen={(id) => void openSaved(id)}
           onDuplicate={(id) => void duplicateSaved(id)}
           onDelete={(id) => void removeSaved(id)}
           onExportFile={() => void handleExportLibrary()}
           onImportFile={(file) => void handleImportLibrary(file)}
-          onCopySiteLink={() => void handleCopySiteLink()}
-          onPushCloud={() => void handlePushCloud()}
-          onRefreshSync={() => void handleRefreshSync()}
         />
       ) : (
         <div className="app-shell mx-auto grid max-w-[1600px] grid-cols-1 gap-6 px-4 py-4 pb-28 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)] lg:items-start lg:px-6 lg:py-6 lg:pb-6">

@@ -5,13 +5,11 @@ import type { SavedContract } from "@/lib/contracts-db";
 import { normalizeContractNo } from "@/lib/contract";
 import { formatThaiDate } from "@/lib/thai";
 import {
-  CloudUpload,
   Copy,
   Download,
   FilePlus2,
   FolderOpen,
   Pencil,
-  RefreshCw,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -28,32 +26,22 @@ export function ContractLibrary({
   items,
   loading,
   error,
-  syncId,
-  syncMessage,
   onNew,
   onOpen,
   onDuplicate,
   onDelete,
   onExportFile,
   onImportFile,
-  onCopySiteLink,
-  onPushCloud,
-  onRefreshSync,
 }: {
   items: SavedContract[];
   loading: boolean;
   error: string | null;
-  syncId: string | null;
-  syncMessage: string | null;
   onNew: () => void;
   onOpen: (id: string) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
   onExportFile: () => void;
   onImportFile: (file: File) => void;
-  onCopySiteLink: () => void;
-  onPushCloud: () => void;
-  onRefreshSync: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -63,57 +51,29 @@ export function ContractLibrary({
         <div>
           <h1 className="text-lg font-semibold text-teal-950">คลังสัญญา</h1>
           <p className="text-sm text-muted-foreground">
-            เปิดแก้ไขได้ตลอด หรือกด “คัดลอกต่อสัญญา” เมื่อลูกค้าต่ออายุสัญญา
+            กดบันทึกสัญญาแล้วเก็บไว้ที่นี่ — เปิดเว็บนี้เครื่องอื่นก็เห็นรายการเดียวกัน
           </p>
         </div>
-        <Button onClick={onNew}>
-          <FilePlus2 data-icon="inline-start" />
-          สร้างสัญญาใหม่
-        </Button>
-      </div>
-
-      <div className="rounded-xl border border-teal-200 bg-teal-50/80 px-3 py-3 text-sm text-teal-950">
-        <p className="font-medium">ซิงก์อัตโนมัติข้ามเครื่อง</p>
-        <p className="mt-1 text-xs leading-5 text-teal-900/90">
-          เปิดลิงก์เว็บบริษัทเครื่องไหนก็ได้ คลังสัญญาจะดึง/อัปเดตให้อัตโนมัติ
-          เมื่อกดบันทึก ลบ หรือคัดลอกสัญญา — ไฟล์แนบขนาดใหญ่ยังเก็บบนเครื่อง
-          (สำรองด้วยส่งออกไฟล์ได้)
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button type="button" size="sm" onClick={onRefreshSync}>
-            <RefreshCw data-icon="inline-start" />
-            ซิงก์ตอนนี้
-          </Button>
-          <Button type="button" size="sm" variant="outline" onClick={onPushCloud}>
-            <CloudUpload data-icon="inline-start" />
-            อัปโหลดคลัง
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={onCopySiteLink}
-          >
-            <Copy data-icon="inline-start" />
-            คัดลอกลิงก์เว็บ
-          </Button>
+        <div className="flex flex-wrap gap-2">
           <Button
             type="button"
             size="sm"
             variant="outline"
             onClick={onExportFile}
+            title="สำรองคลังเป็นไฟล์"
           >
             <Download data-icon="inline-start" />
-            ส่งออกไฟล์
+            ส่งออก
           </Button>
           <Button
             type="button"
             size="sm"
             variant="outline"
             onClick={() => fileRef.current?.click()}
+            title="นำเข้าจากไฟล์สำรอง"
           >
             <Upload data-icon="inline-start" />
-            นำเข้าไฟล์
+            นำเข้า
           </Button>
           <input
             ref={fileRef}
@@ -126,15 +86,11 @@ export function ContractLibrary({
               e.target.value = "";
             }}
           />
+          <Button onClick={onNew}>
+            <FilePlus2 data-icon="inline-start" />
+            สร้างสัญญาใหม่
+          </Button>
         </div>
-        {syncId ? (
-          <p className="mt-2 text-[11px] text-teal-900/70">
-            คลังร่วมบริษัทพร้อมใช้งาน
-          </p>
-        ) : null}
-        {syncMessage ? (
-          <p className="mt-2 text-xs font-medium text-teal-900">{syncMessage}</p>
-        ) : null}
       </div>
 
       {error ? (
@@ -154,7 +110,7 @@ export function ContractLibrary({
             ยังไม่มีสัญญาที่บันทึก
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            สร้างสัญญาแล้วกด “บันทึกสัญญา” เพื่อเก็บไว้ — เครื่องอื่นที่เปิดเว็บนี้จะเห็นตาม
+            สร้างสัญญาแล้วกด “บันทึกสัญญา” ได้เลย
           </p>
           <Button className="mt-4" onClick={onNew}>
             เริ่มสร้างสัญญา
