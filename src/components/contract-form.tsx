@@ -311,7 +311,8 @@ export function ContractForm({
             </span>
             {!inputs.include_equipment ? (
               <span className="mt-1 block text-amber-800">
-                ไม่รวมอุปกรณ์ — จะไม่แสดงรายการให้เลือกในข้อ 2
+                ไม่รวมอุปกรณ์และวัสดุสิ้นเปลือง — จะไม่แสดงรายการให้เลือกในข้อ 2
+                และวัสดุสิ้นเปลือง
               </span>
             ) : null}
           </span>
@@ -357,27 +358,27 @@ export function ContractForm({
               value={inputs.sow_shared_materials}
               onChange={(next) => onChange("sow_shared_materials", next)}
             />
-          </>
-        ) : null}
-      </section>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold tracking-wide text-teal-800">
-          วัสดุสิ้นเปลือง
-        </h2>
-        <ConsumablesPanel
-          items={inputs.consumables}
-          onChange={(items) => onChange("consumables", items)}
-        />
-        {ctx.consumable_lines.length > 0 ? (
-          <div className="rounded-lg border border-teal-100 bg-teal-50/60 px-3 py-2 text-xs leading-5 text-teal-950">
-            <p className="font-medium">ข้อความที่จะปรากฏในสัญญา</p>
-            <ul className="mt-1 list-disc space-y-0.5 pl-4">
-              {ctx.consumable_lines.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </div>
+            <div className="space-y-3 border-t border-border pt-3">
+              <h3 className="text-sm font-medium text-teal-900">
+                วัสดุสิ้นเปลือง
+              </h3>
+              <ConsumablesPanel
+                items={inputs.consumables}
+                onChange={(items) => onChange("consumables", items)}
+              />
+              {ctx.consumable_lines.length > 0 ? (
+                <div className="rounded-lg border border-teal-100 bg-teal-50/60 px-3 py-2 text-xs leading-5 text-teal-950">
+                  <p className="font-medium">ข้อความที่จะปรากฏในสัญญา</p>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                    {ctx.consumable_lines.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          </>
         ) : null}
       </section>
 

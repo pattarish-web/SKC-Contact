@@ -747,7 +747,9 @@ export function buildContractContext(inputs: ContractInputs): ContractContext {
   const total_with_vat = round2(total_contract_price_raw + vat_amount);
 
   const consumables = normalizeConsumables(inputs.consumables);
-  const consumable_lines = buildConsumableLines(consumables);
+  const consumable_lines = inputs.include_equipment
+    ? buildConsumableLines(consumables)
+    : [];
   const sow = normalizeSowFields(inputs);
 
   const equipment_clause = inputs.include_equipment

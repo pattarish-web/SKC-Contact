@@ -578,25 +578,25 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
               value={ctx.sow_shared_materials}
               fallback=".............................................................................................................................................."
             />
+
+            <p className="mt-4 font-semibold">3. วัสดุสิ้นเปลืองที่ระบุในสัญญา</p>
+            {ctx.consumable_lines.length > 0 ? (
+              <ul className="mt-1 list-disc space-y-1 pl-6">
+                {ctx.consumable_lines.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-1 text-neutral-500">
+                ..............................................................................................................................................
+              </p>
+            )}
           </>
         ) : (
           <p className="mt-2 leading-6">
             ไม่รวมอยู่ในค่าจ้างตามสัญญานี้ — ผู้ว่าจ้างเป็นผู้จัดหาอุปกรณ์ เครื่องมือ
-            เครื่องใช้ไฟฟ้า และน้ำยาทำความสะอาดเอง{" "}
+            เครื่องใช้ไฟฟ้า น้ำยาทำความสะอาด และวัสดุสิ้นเปลืองเอง{" "}
             ({ctx.equipment_clause})
-          </p>
-        )}
-
-        <p className="mt-4 font-semibold">3. วัสดุสิ้นเปลืองที่ระบุในสัญญา</p>
-        {ctx.consumable_lines.length > 0 ? (
-          <ul className="mt-1 list-disc space-y-1 pl-6">
-            {ctx.consumable_lines.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-1 text-neutral-500">
-            ..............................................................................................................................................
           </p>
         )}
 

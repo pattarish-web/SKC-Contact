@@ -234,6 +234,12 @@
     display: none !important;
   }
 
+  .checklist-two-col {
+    grid-template-columns: 1fr 1fr !important;
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+
   .contract-print-root {
     gap: 0;
   }
