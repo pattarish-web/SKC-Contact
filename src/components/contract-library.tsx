@@ -51,7 +51,7 @@ export function ContractLibrary({
         <div>
           <h1 className="text-lg font-semibold text-teal-950">คลังสัญญา</h1>
           <p className="text-sm text-muted-foreground">
-            กดบันทึกสัญญาแล้วเก็บไว้ที่นี่ — เปิดเว็บนี้เครื่องอื่นก็เห็นรายการเดียวกัน
+            กดบันทึกสัญญาแล้วเก็บไว้ที่นี่ — เปิดหน้านี้เครื่องอื่นจะดึงคลังร่วมมาให้ครบ
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

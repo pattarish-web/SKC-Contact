@@ -141,13 +141,14 @@ export function ContractApp() {
     setLibraryLoading(false);
   }, []);
 
-  async function quietPushCloud() {
+  async function quietPushCloud(): Promise<boolean> {
     const id = (await resolveSyncId()) || getSyncId();
-    if (!id) return;
+    if (!id) return false;
     try {
       await pushLibraryToCloud(id);
+      return true;
     } catch {
-      // Keep local save successful even if cloud push fails.
+      return false;
     }
   }
 
@@ -301,12 +302,12 @@ export function ContractApp() {
       const saved = await saveContract(payload, { id: activeId });
       setInputs(saved.inputs);
       setActiveContractId(saved.id);
-      await quietPushCloud();
+      const cloudOk = await quietPushCloud();
       await reloadLocalLibrary();
       setSaveMessage(
-        `บันทึกแล้ว · ${saved.inputs.contract_no} · ${new Date(
-          saved.updatedAt
-        ).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}`
+        cloudOk
+          ? `บันทึกแล้ว · ${saved.inputs.contract_no} · เครื่องอื่นเปิดเว็บนี้จะเห็นตาม`
+          : `บันทึกในเครื่องแล้ว · ${saved.inputs.contract_no} · แต่ส่งขึ้นคลังร่วมไม่สำเร็จ ลองบันทึกอีกครั้ง`
       );
     } catch {
       window.alert("บันทึกสัญญาไม่สำเร็จ");
