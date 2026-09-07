@@ -30,4 +30,15 @@ const keepOnSamePage = packBlocks(
 );
 assert.deepEqual(keepOnSamePage, [[0, 1], [2]]);
 
+const closingCluster = packBlocks(
+  [
+    { height: 70 },
+    { height: 20, keepWithNext: true },
+    { height: 25, keepWithNext: true },
+    { height: 40 },
+  ],
+  100
+);
+assert.deepEqual(closingCluster, [[0], [1, 2, 3]]);
+
 console.log("paginate.test.ts: all assertions passed");

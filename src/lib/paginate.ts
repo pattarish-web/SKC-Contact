@@ -3,6 +3,16 @@ export type PackBlock = {
   keepWithNext?: boolean;
 };
 
+/** Height of this block plus any following keepWithNext chain. */
+export function chainHeight(blocks: PackBlock[], start: number): number {
+  let total = 0;
+  for (let index = start; index < blocks.length; index++) {
+    total += Math.max(0, blocks[index].height);
+    if (!blocks[index].keepWithNext) break;
+  }
+  return total;
+}
+
 /** Pack keep-together blocks into pages that do not exceed `capacity`. */
 export function packBlocks(blocks: PackBlock[], capacity: number): number[][] {
   if (blocks.length === 0) return [[]];
@@ -20,11 +30,8 @@ export function packBlocks(blocks: PackBlock[], capacity: number): number[][] {
 
   blocks.forEach((block, index) => {
     const height = Math.max(0, block.height);
-    const next = block.keepWithNext ? blocks[index + 1] : undefined;
-    const needed =
-      height + (next ? Math.max(0, next.height) : 0);
-    const fits =
-      current.length === 0 || used + (next ? needed : height) <= limit;
+    const needed = block.keepWithNext ? chainHeight(blocks, index) : height;
+    const fits = current.length === 0 || used + needed <= limit;
     if (!fits) pushPage();
     current.push(index);
     used += height;

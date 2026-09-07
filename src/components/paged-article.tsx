@@ -52,7 +52,7 @@ export function PagedArticle({
         (Number.parseFloat(style.paddingTop) || 0) +
         (Number.parseFloat(style.paddingBottom) || 0);
       const headerH = Math.max(0, ...headers.map((el) => outerHeight(el)));
-      const capacity = Math.max(80, pagePx - pad - headerH - 16);
+      const capacity = Math.max(80, pagePx - pad - headerH - 28);
       const packed = packBlocks(
         keep.map((el, index) => ({
           height: outerHeight(el),
