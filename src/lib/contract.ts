@@ -54,6 +54,8 @@ export type ContractInputs = {
   price_per_head?: string;
   ot_rate: string;
   holiday_rate: string;
+  /** When true, monthly rate already covers public-holiday work. */
+  holiday_included_in_rate: boolean;
   sow_scope: string;
   /** @deprecated prefer sow_tools / sow_electrical / sow_shared_materials */
   sow_equipment?: string;
@@ -89,6 +91,7 @@ export type ContractContext = {
   total_price_text: string;
   ot_rate: string;
   holiday_rate: string;
+  holiday_included_in_rate: boolean;
   sow_scope: string;
   sow_equipment: string;
   sow_tools: string;
@@ -651,6 +654,7 @@ export function emptyInputs(partial: Partial<ContractInputs> = {}): ContractInpu
     work_hours: "08.00-17.00 น.",
     ot_rate: "109",
     holiday_rate: "800",
+    holiday_included_in_rate: false,
     sow_scope: "",
     sow_tools: "",
     sow_electrical: "",
@@ -710,6 +714,7 @@ export function buildSampleInputs(contractNo?: string): ContractInputs {
     work_hours: "08.00-17.00 น.",
     ot_rate: "109",
     holiday_rate: "800",
+    holiday_included_in_rate: false,
     sow_scope:
       "ทำความสะอาดพื้นที่ส่วนกลาง ห้องน้ำ โถงทางเดิน และพื้นที่สำนักงานตามรอบที่ตกลง รวมทั้งพื้นที่เตรียมเครื่องดื่ม/ตู้เย็นตามที่ระบุในขอบเขตงาน",
     sow_tools: DEFAULT_SOW_TOOLS,
@@ -786,6 +791,7 @@ export function buildContractContext(inputs: ContractInputs): ContractContext {
     total_price_text: bahtText(total_contract_price_raw),
     ot_rate: inputs.ot_rate.trim() || "109",
     holiday_rate: inputs.holiday_rate.trim() || "800",
+    holiday_included_in_rate: Boolean(inputs.holiday_included_in_rate),
     sow_scope: sow.sow_scope,
     sow_equipment: sow.sow_equipment || "",
     sow_tools: sow.sow_tools,

@@ -255,7 +255,7 @@ export function ContractForm({
           <Field
             label="ค่าล่วงเวลา (บาท/ชั่วโมง)"
             htmlFor="ot_rate"
-            hint="หมายเหตุแนบท้าย ข้อ 3"
+            hint="หมายเหตุแนบท้าย ข้อ 2"
           >
             <Input
               id="ot_rate"
@@ -264,18 +264,40 @@ export function ContractForm({
               onChange={(e) => onChange("ot_rate", e.target.value)}
             />
           </Field>
-          <Field
-            label="ค่าบริการวันหยุดนักขัตฤกษ์ (บาท/คน/วัน)"
-            htmlFor="holiday_rate"
-            hint="เมื่อผู้ว่าจ้างต้องการให้ทำงานในวันหยุดนักขัตฤกษ์"
-          >
-            <Input
-              id="holiday_rate"
-              inputMode="decimal"
-              value={inputs.holiday_rate}
-              onChange={(e) => onChange("holiday_rate", e.target.value)}
-            />
-          </Field>
+          <div className="space-y-2">
+            <label className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 p-3">
+              <Checkbox
+                checked={inputs.holiday_included_in_rate}
+                onCheckedChange={(checked) =>
+                  onChange("holiday_included_in_rate", Boolean(checked))
+                }
+                className="mt-0.5"
+              />
+              <span className="text-sm leading-6">
+                <span className="font-medium">
+                  ราคารวมค่าทำงานวันนักขัตฤกษ์แล้ว
+                </span>
+                <span className="mt-1 block text-muted-foreground">
+                  ติ๊กเมื่อค่าบริการรายเดือนรวมวันนักขัตฤกษ์แล้ว
+                  ไม่คิดค่าบริการเพิ่ม
+                </span>
+              </span>
+            </label>
+            {!inputs.holiday_included_in_rate ? (
+              <Field
+                label="ค่าบริการวันหยุดนักขัตฤกษ์ (บาท/คน/วัน)"
+                htmlFor="holiday_rate"
+                hint="เมื่อผู้ว่าจ้างต้องการให้ทำงานในวันหยุดนักขัตฤกษ์"
+              >
+                <Input
+                  id="holiday_rate"
+                  inputMode="decimal"
+                  value={inputs.holiday_rate}
+                  onChange={(e) => onChange("holiday_rate", e.target.value)}
+                />
+              </Field>
+            ) : null}
+          </div>
         </div>
       </section>
 
