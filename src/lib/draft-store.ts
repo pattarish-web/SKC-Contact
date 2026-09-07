@@ -17,12 +17,15 @@ type DraftSnapshot = {
   storageError: string | null;
 };
 
-let snapshot: DraftSnapshot = {
+/** Must be a stable reference — React compares getServerSnapshot() by Object.is. */
+const SERVER_SNAPSHOT: DraftSnapshot = {
   inputs: emptyInputs(),
   activeId: null,
   hydrated: false,
   storageError: null,
 };
+
+let snapshot: DraftSnapshot = SERVER_SNAPSHOT;
 
 const listeners = new Set<() => void>();
 
@@ -46,11 +49,8 @@ function readStorage(): Omit<DraftSnapshot, "hydrated"> {
       return { inputs: freshInputs(), activeId: null, storageError: null };
     }
     const parsed = JSON.parse(raw) as Partial<ContractInputs>;
-    // Only fill missing keys — keep intentional empty strings.
-    // Upgrade legacy SC-YYYY-NNN → SC-YYYY-MM-NNN when loading.
-    const inputs = emptyInputs({ ...parsed });
     return {
-      inputs,
+      inputs: emptyInputs({ ...parsed }),
       activeId: activeId || null,
       storageError: null,
     };
@@ -77,16 +77,10 @@ function getSnapshot(): DraftSnapshot {
 }
 
 function getServerSnapshot(): DraftSnapshot {
-  return {
-    inputs: emptyInputs(),
-    activeId: null,
-    hydrated: false,
-    storageError: null,
-  };
+  return SERVER_SNAPSHOT;
 }
 
 function persist(next: DraftSnapshot) {
-  snapshot = next;
   if (typeof window !== "undefined") {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next.inputs));
@@ -102,12 +96,15 @@ function persist(next: DraftSnapshot) {
         storageError: "บันทึกร่างไม่สำเร็จ (พื้นที่เบราว์เซอร์อาจเต็ม)",
       };
     }
+  } else {
+    snapshot = next;
   }
   emit();
 }
 
 export function hydrateDraft() {
   if (typeof window === "undefined") return;
+  if (snapshot.hydrated) return;
   const loaded = readStorage();
   snapshot = { ...loaded, hydrated: true };
   emit();
@@ -188,7 +185,7 @@ export function useContractDraft() {
   );
 
   useEffect(() => {
-    if (!snapshot.hydrated) hydrateDraft();
+    hydrateDraft();
 
     function onStorage(event: StorageEvent) {
       if (event.key !== STORAGE_KEY && event.key !== ACTIVE_CONTRACT_ID_KEY) {

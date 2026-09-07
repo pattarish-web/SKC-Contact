@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   buildContractContext,
+  buildSampleInputs,
   emptyInputs,
   missingRequiredFields,
   normalizeContractNo,
@@ -58,6 +59,12 @@ const sample = emptyInputs({
   ],
 });
 assert.equal(sample.contract_no, "SC-2569-09-003");
+
+const sampleFilled = buildSampleInputs("SC-2569-09-099");
+assert.equal(missingRequiredFields(sampleFilled).length, 0);
+assert.ok(sampleFilled.client_address.trim());
+assert.ok(sampleFilled.client_authorized.trim());
+assert.ok(sampleFilled.staff_roles.some((r) => Number(r.price_per_head) > 0));
 
 const ctx = buildContractContext(sample);
 assert.equal(ctx.staff_count, 2);

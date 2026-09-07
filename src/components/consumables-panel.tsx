@@ -250,6 +250,11 @@ export function ConsumablesPanel({
     TOILET_PAPER_QTY_PRESETS
   );
 
+  const bagVariantSignature = items
+    .filter((item) => isTrashBags(item))
+    .map((item) => `${item.id}:${item.variants?.length ?? 0}`)
+    .join("|");
+
   useEffect(() => {
     const needsMigrate = items.some(
       (item) => isTrashBags(item) && (!item.variants || item.variants.length === 0)
@@ -274,7 +279,8 @@ export function ConsumablesPanel({
       onChange(items.map(migrate));
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [items, onChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- migrate only when bag variant counts change
+  }, [bagVariantSignature]);
 
   function patch(id: string, partial: Partial<ConsumableSpec>) {
     onChange(

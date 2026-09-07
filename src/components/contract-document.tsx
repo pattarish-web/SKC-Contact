@@ -1,3 +1,4 @@
+import { BrandMark } from "@/components/brand-mark";
 import { COMPANY } from "@/lib/company";
 import type { ContractContext } from "@/lib/contract";
 import { formatThaiDate } from "@/lib/thai";
@@ -106,6 +107,33 @@ function SignatureBlock({ ctx }: { ctx: ContractContext }) {
   );
 }
 
+function ContractHeader({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <header className="border-b-2 border-teal-800 pb-3">
+      <div className="flex items-start gap-3">
+        <BrandMark className="size-11 print:size-10" />
+        <div className="min-w-0 flex-1 text-center sm:pr-11">
+          <p className="text-[11px] tracking-wide text-teal-800">
+            {COMPANY.name}
+          </p>
+          <h1 className="mt-1 text-[20px] font-bold leading-tight tracking-wide sm:text-[22px]">
+            {title}
+          </h1>
+          {subtitle ? (
+            <p className="mt-1 text-[13px] text-neutral-700">{subtitle}</p>
+          ) : null}
+        </div>
+      </div>
+    </header>
+  );
+}
+
 function MultilineFill({
   value,
   fallback,
@@ -146,14 +174,7 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
   return (
     <div id="contract-print" className="contract-print-root">
       <article className="contract-page">
-        <header className="border-b-2 border-teal-800 pb-3 text-center">
-          <p className="text-[11px] tracking-wide text-teal-800">
-            {COMPANY.name}
-          </p>
-          <h1 className="mt-1 text-[22px] font-bold leading-tight tracking-wide">
-            สัญญาบริการทำความสะอาด
-          </h1>
-        </header>
+        <ContractHeader title="สัญญาบริการทำความสะอาด" />
 
         <div className="mt-4 flex flex-col gap-1 text-[13.5px] sm:flex-row sm:items-start sm:justify-between">
           <p>
@@ -354,14 +375,7 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
       </article>
 
       <article className="contract-page">
-        <header className="border-b-2 border-teal-800 pb-3 text-center">
-          <p className="text-[11px] tracking-wide text-teal-800">
-            {COMPANY.name}
-          </p>
-          <h1 className="mt-1 text-[20px] font-bold leading-tight">
-            เอกสารแนบท้ายสัญญา 1
-          </h1>
-        </header>
+        <ContractHeader title="เอกสารแนบท้ายสัญญา 1" />
 
         <p className="mt-4">
           หน่วยงาน: <Fill value={ctx.client_name} />
@@ -498,17 +512,10 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
       </article>
 
       <article className="contract-page">
-        <header className="border-b-2 border-teal-800 pb-3 text-center">
-          <p className="text-[11px] tracking-wide text-teal-800">
-            {COMPANY.name}
-          </p>
-          <h1 className="mt-1 text-[20px] font-bold leading-tight">
-            เอกสารแนบท้ายสัญญา 2
-          </h1>
-          <p className="mt-1 text-[13px]">
-            ขอบเขตงาน (Scope of Work) และรายการอุปกรณ์/น้ำยาทำความสะอาด
-          </p>
-        </header>
+        <ContractHeader
+          title="เอกสารแนบท้ายสัญญา 2"
+          subtitle="ขอบเขตงาน (Scope of Work) และรายการอุปกรณ์/น้ำยาทำความสะอาด"
+        />
 
         <p className="mt-4">
           อ้างอิงสัญญาเลขที่ <Fill value={ctx.contract_no} /> หน่วยงาน{" "}
