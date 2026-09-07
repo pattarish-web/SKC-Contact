@@ -96,37 +96,27 @@ function SignatureBlock({ ctx }: { ctx: ContractContext }) {
   );
 }
 
-function ContractHeader({
+function ContractHeader({ right }: { right?: ReactNode }) {
+  return (
+    <header className="contract-header">
+      <BrandMark variant="contract" />
+      <div className="contract-header-meta">{right}</div>
+    </header>
+  );
+}
+
+function DocumentTitle({
   title,
   subtitle,
-  right,
-  continued = false,
 }: {
   title: string;
   subtitle?: string;
-  right?: ReactNode;
-  continued?: boolean;
 }) {
   return (
-    <header className="contract-header">
-      <div className="flex items-center justify-between gap-4">
-        <BrandMark variant="contract" />
-        <div className="min-w-[11rem] text-right text-[12.5px] leading-snug">
-          {right}
-        </div>
-      </div>
-      <h1 className="mt-3 text-center text-[20px] font-bold leading-tight tracking-wide sm:text-[21px]">
-        {title}
-      </h1>
-      {subtitle ? (
-        <p className="mt-1 text-center text-[13px] text-neutral-700">
-          {subtitle}
-        </p>
-      ) : null}
-      {continued ? (
-        <p className="mt-1 text-center text-[12px] text-neutral-600">หน้าต่อ</p>
-      ) : null}
-    </header>
+    <div className="contract-doc-title">
+      <h1>{title}</h1>
+      {subtitle ? <p>{subtitle}</p> : null}
+    </div>
   );
 }
 
@@ -196,17 +186,15 @@ function splitLines(value: string): string[] {
     .filter(Boolean);
 }
 
-function contractMeta(ctx: ContractContext, date: string, withDate: boolean) {
+function contractMeta(ctx: ContractContext, date: string) {
   return (
     <>
       <p>
         สัญญาเลขที่ <Fill value={ctx.contract_no} />
       </p>
-      {withDate ? (
-        <p>
-          วันที่ <Fill value={date} />
-        </p>
-      ) : null}
+      <p>
+        วันที่ <Fill value={date} />
+      </p>
     </>
   );
 }
@@ -231,21 +219,16 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
           },
         ];
 
-  const mainHeader = (
-    <ContractHeader
-      title="สัญญาบริการทำความสะอาด"
-      right={contractMeta(ctx, contractDate, true)}
-    />
-  );
-  const mainContinued = (
-    <ContractHeader
-      title="สัญญาบริการทำความสะอาด"
-      continued
-      right={contractMeta(ctx, contractDate, true)}
-    />
+  const letterhead = (
+    <ContractHeader right={contractMeta(ctx, contractDate)} />
   );
 
   const mainBlocks: PageBlock[] = [
+    {
+      key: "title",
+      keepWithNext: true,
+      node: <DocumentTitle title="สัญญาบริการทำความสะอาด" />,
+    },
     {
       key: "place",
       node: (
@@ -591,21 +574,12 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
     { key: "sign-main", node: <SignatureBlock ctx={ctx} /> },
   ];
 
-  const annex1Header = (
-    <ContractHeader
-      title="เอกสารแนบท้ายสัญญา 1"
-      right={contractMeta(ctx, contractDate, false)}
-    />
-  );
-  const annex1Continued = (
-    <ContractHeader
-      title="เอกสารแนบท้ายสัญญา 1"
-      continued
-      right={contractMeta(ctx, contractDate, false)}
-    />
-  );
-
   const annex1Blocks: PageBlock[] = [
+    {
+      key: "a1-title",
+      keepWithNext: true,
+      node: <DocumentTitle title="เอกสารแนบท้ายสัญญา 1" />,
+    },
     {
       key: "a1-org",
       node: (
@@ -787,23 +761,17 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
     { key: "sign-a1", node: <SignatureBlock ctx={ctx} /> },
   ];
 
-  const annex2Header = (
-    <ContractHeader
-      title="เอกสารแนบท้ายสัญญา 2"
-      subtitle="ขอบเขตงานและรายการอุปกรณ์/น้ำยาทำความสะอาด"
-      right={contractMeta(ctx, contractDate, false)}
-    />
-  );
-  const annex2Continued = (
-    <ContractHeader
-      title="เอกสารแนบท้ายสัญญา 2"
-      subtitle="ขอบเขตงานและรายการอุปกรณ์/น้ำยาทำความสะอาด"
-      continued
-      right={contractMeta(ctx, contractDate, false)}
-    />
-  );
-
   const annex2Blocks: PageBlock[] = [
+    {
+      key: "a2-title",
+      keepWithNext: true,
+      node: (
+        <DocumentTitle
+          title="เอกสารแนบท้ายสัญญา 2"
+          subtitle="ขอบเขตงานและรายการอุปกรณ์/น้ำยาทำความสะอาด"
+        />
+      ),
+    },
     {
       key: "a2-ref",
       node: (
@@ -878,21 +846,9 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
 
   return (
     <div id="contract-print" className="contract-print-root">
-      <PagedArticle
-        header={mainHeader}
-        continuedHeader={mainContinued}
-        blocks={mainBlocks}
-      />
-      <PagedArticle
-        header={annex1Header}
-        continuedHeader={annex1Continued}
-        blocks={annex1Blocks}
-      />
-      <PagedArticle
-        header={annex2Header}
-        continuedHeader={annex2Continued}
-        blocks={annex2Blocks}
-      />
+      <PagedArticle header={letterhead} blocks={mainBlocks} />
+      <PagedArticle header={letterhead} blocks={annex1Blocks} />
+      <PagedArticle header={letterhead} blocks={annex2Blocks} />
     </div>
   );
 }

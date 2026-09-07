@@ -190,8 +190,57 @@
 }
 
 .contract-header {
-  border-bottom: 2px solid #115e59;
-  padding-bottom: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  border-bottom: 1.5px solid #115e59;
+  padding-bottom: 0.35rem;
+  flex-shrink: 0;
+}
+
+.contract-header img {
+  flex-shrink: 0;
+  height: 32px !important;
+  max-height: 32px !important;
+  width: auto !important;
+  max-width: 184px !important;
+}
+
+.contract-header-meta {
+  min-width: 0;
+  flex: 0 1 auto;
+  text-align: right;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #262626;
+}
+
+.contract-header-meta p {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.contract-doc-title {
+  margin-top: 0.7rem;
+  text-align: center;
+}
+
+.contract-doc-title h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0.04em;
+}
+
+.contract-doc-title p {
+  margin: 0.2rem 0 0;
+  font-size: 13px;
+  color: #404040;
 }
 
 .contract-sign-block {
@@ -393,6 +442,13 @@
   svg {
     max-width: 100%;
     height: auto;
+  }
+
+  .contract-header img {
+    height: 32px !important;
+    max-height: 32px !important;
+    width: auto !important;
+    max-width: 184px !important;
   }
 
   .print-visible {
