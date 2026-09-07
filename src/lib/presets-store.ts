@@ -2,7 +2,14 @@
 
 const STORAGE_KEY = "sanggan-clean-custom-presets";
 
-export type PresetGroup = "work_days" | "work_hours" | "client_position";
+export type PresetGroup =
+  | "work_days"
+  | "work_hours"
+  | "client_position"
+  | "trash_bag_size"
+  | "toilet_paper_size"
+  | "trash_bag_qty"
+  | "toilet_paper_qty";
 
 type CustomPresets = Record<PresetGroup, string[]>;
 
@@ -10,7 +17,17 @@ const EMPTY: CustomPresets = {
   work_days: [],
   work_hours: [],
   client_position: [],
+  trash_bag_size: [],
+  toilet_paper_size: [],
+  trash_bag_qty: [],
+  toilet_paper_qty: [],
 };
+
+function asList(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((x): x is string => typeof x === "string" && Boolean(x.trim()))
+    : [];
+}
 
 function readAll(): CustomPresets {
   if (typeof window === "undefined") return { ...EMPTY };
@@ -19,15 +36,13 @@ function readAll(): CustomPresets {
     if (!raw) return { ...EMPTY };
     const parsed = JSON.parse(raw) as Partial<CustomPresets>;
     return {
-      work_days: Array.isArray(parsed.work_days)
-        ? parsed.work_days.filter((x) => typeof x === "string" && x.trim())
-        : [],
-      work_hours: Array.isArray(parsed.work_hours)
-        ? parsed.work_hours.filter((x) => typeof x === "string" && x.trim())
-        : [],
-      client_position: Array.isArray(parsed.client_position)
-        ? parsed.client_position.filter((x) => typeof x === "string" && x.trim())
-        : [],
+      work_days: asList(parsed.work_days),
+      work_hours: asList(parsed.work_hours),
+      client_position: asList(parsed.client_position),
+      trash_bag_size: asList(parsed.trash_bag_size),
+      toilet_paper_size: asList(parsed.toilet_paper_size),
+      trash_bag_qty: asList(parsed.trash_bag_qty),
+      toilet_paper_qty: asList(parsed.toilet_paper_qty),
     };
   } catch {
     return { ...EMPTY };
