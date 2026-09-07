@@ -135,6 +135,28 @@
   gap: 1.5rem;
 }
 
+.checklist-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 1.25rem;
+  row-gap: 0.2rem;
+  margin: 0.25rem 0 0;
+  padding-left: 1.15rem;
+  list-style: disc;
+  line-height: 1.55;
+}
+
+.checklist-two-col > li {
+  break-inside: avoid;
+  padding-right: 0.25rem;
+}
+
+@media (max-width: 640px) {
+  .checklist-two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
 .contract-page {
   width: 100%;
   max-width: 210mm;

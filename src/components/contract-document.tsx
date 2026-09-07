@@ -171,7 +171,7 @@ function ChecklistFill({
     return <p className="leading-6 text-neutral-500">{fallback}</p>;
   }
   return (
-    <ul className="mt-1 list-disc space-y-1 pl-6 leading-6">
+    <ul className="checklist-two-col mt-1">
       {items.map((item) => (
         <li key={item}>
           <span className="font-semibold">{item}</span>
