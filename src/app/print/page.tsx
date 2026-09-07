@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ContractDocument } from "@/components/contract-document";
 import { buildContractContext, type ContractInputs } from "@/lib/contract";
 import { readPrintPayload } from "@/lib/draft-store";
+import { printClean } from "@/lib/print";
 import { Button } from "@/components/ui/button";
 
 type PrintState =
@@ -25,7 +26,7 @@ export default function PrintPage() {
 
   useEffect(() => {
     if (state.status !== "ready") return;
-    const id = window.setTimeout(() => window.print(), 350);
+    const id = window.setTimeout(() => printClean(), 350);
     return () => window.clearTimeout(id);
   }, [state]);
 
@@ -57,11 +58,17 @@ export default function PrintPage() {
 
   return (
     <main className="print-root bg-white text-zinc-900">
-      <div className="no-print sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur">
-        <p className="text-sm text-zinc-600">
-          หากกล่องพิมพ์ไม่เปิดอัตโนมัติ ให้กดปุ่มพิมพ์ด้านขวา
-        </p>
-        <Button type="button" onClick={() => window.print()}>
+      <div className="no-print sticky top-0 z-10 flex flex-col gap-2 border-b border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 text-sm text-zinc-700">
+          <p>หากกล่องพิมพ์ไม่เปิดอัตโนมัติ ให้กดปุ่มพิมพ์ด้านขวา</p>
+          <p className="mt-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-950">
+            เพื่อเอา URL / วันที่ / ชื่อหน้า ออก: ในหน้าต่างพิมพ์เปิด More
+            settings แล้วปิด{" "}
+            <span className="font-semibold">Headers and footers</span>
+            {" "}(ส่วนหัวและส่วนท้าย)
+          </p>
+        </div>
+        <Button type="button" onClick={() => printClean()}>
           พิมพ์ / บันทึก PDF
         </Button>
       </div>
