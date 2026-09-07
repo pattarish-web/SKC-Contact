@@ -52,8 +52,13 @@ function SignLine({
         <span className="sign-ink-role">{role}</span>
       </p>
       <p className="sign-name">
-        ({name?.trim() ? <span className="font-semibold"> {name} </span> : <SignBlank wide />}
-        )
+        <span className="sign-paren">(</span>
+        {name?.trim() ? (
+          <span className="sign-name-fill font-semibold">{name}</span>
+        ) : (
+          <SignBlank wide />
+        )}
+        <span className="sign-paren">)</span>
       </p>
       <p className="sign-company">{company?.trim() ? company : "\u00a0"}</p>
       <p className="sign-position">

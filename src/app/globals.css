@@ -271,7 +271,7 @@
 
 .sign-line {
   display: grid;
-  grid-template-rows: 2.9em 2.05em 1.55em 1.55em;
+  grid-template-rows: 3.1em 3.1em 1.55em 1.55em;
   width: 100%;
   min-width: 0;
   font-size: 13px;
@@ -281,7 +281,7 @@
 
 @supports (grid-template-rows: subgrid) {
   .sign-pair {
-    grid-template-rows: 2.9em 2.05em 1.55em 1.55em;
+    grid-template-rows: 3.1em 3.1em 1.55em 1.55em;
   }
 
   .sign-line {
@@ -297,7 +297,7 @@
   column-gap: 0.4em;
   width: 100%;
   margin: 0;
-  min-height: 2.9em;
+  min-height: 3.1em;
   text-align: start;
 }
 
@@ -310,7 +310,7 @@
 .sign-rule {
   display: block;
   min-width: 0;
-  height: 2.25em;
+  height: 2.45em;
   border-bottom: 1px solid #171717;
 }
 
@@ -320,24 +320,36 @@
   margin: 0;
   width: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  gap: 0.3em;
+  gap: 0.55em;
   white-space: nowrap;
+}
+
+.sign-paren {
+  flex: none;
+  padding-bottom: 0.02em;
+  line-height: 1;
+}
+
+.sign-name-fill {
+  min-width: 8rem;
+  padding: 0 0.15em 0.08em;
 }
 
 .sign-fish {
   display: inline-block;
   width: 9.5rem;
-  height: 1.05em;
+  height: 1.45em;
   flex: 0 0 9.5rem;
   border-bottom: 1.5px dotted #171717;
   vertical-align: bottom;
 }
 
 .sign-fish-wide {
-  width: 12.5rem;
-  flex-basis: 12.5rem;
+  width: 11.5rem;
+  flex-basis: 11.5rem;
+  height: 2.2em;
 }
 
 .sign-fish-inline {
