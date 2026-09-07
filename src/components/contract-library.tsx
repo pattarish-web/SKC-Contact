@@ -7,6 +7,7 @@ import { formatThaiDate } from "@/lib/thai";
 import {
   Copy,
   Download,
+  Eye,
   FilePlus2,
   FolderOpen,
   FolderSync,
@@ -39,6 +40,7 @@ export function ContractLibrary({
   onImportFile,
   onSyncNow,
   onPickFolder,
+  onReview,
 }: {
   items: SavedContract[];
   loading: boolean;
@@ -54,6 +56,7 @@ export function ContractLibrary({
   onImportFile: (file: File) => void;
   onSyncNow: () => void;
   onPickFolder: () => void;
+  onReview: (id: string) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -180,6 +183,15 @@ export function ContractLibrary({
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onReview(item.id)}
+                    title="รีวิวสัญญาและไฟล์แนบ"
+                  >
+                    <Eye data-icon="inline-start" />
+                    รีวิว
+                  </Button>
                   <Button
                     size="sm"
                     onClick={() => onDuplicate(item.id)}

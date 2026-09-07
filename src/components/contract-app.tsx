@@ -4,6 +4,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { ContractDocument } from "@/components/contract-document";
 import { ContractForm } from "@/components/contract-form";
 import { ContractLibrary } from "@/components/contract-library";
+import { ContractReview } from "@/components/contract-review";
 import { HomeBackButton } from "@/components/home-back-button";
 import { Button } from "@/components/ui/button";
 import { COMPANY } from "@/lib/company";
@@ -54,6 +55,7 @@ import {
 import { appPath } from "@/lib/paths";
 import { endDateFromStart, monthsFromRange, todayISO } from "@/lib/thai";
 import {
+  FileSearch,
   FileText,
   Printer,
   RotateCcw,
@@ -93,13 +95,14 @@ function buildRenewalInputs(
 }
 
 type MobilePane = "form" | "preview";
-type View = "library" | "editor";
+type View = "library" | "editor" | "review";
 
 export function ContractApp() {
   const { inputs, setInputs, activeId, hydrated, storageError } =
     useContractDraft();
   const [pane, setPane] = useState<MobilePane>("form");
   const [view, setView] = useState<View>("library");
+  const [reviewId, setReviewId] = useState<string | null>(null);
   const [library, setLibrary] = useState<SavedContract[]>([]);
   const [libraryLoading, setLibraryLoading] = useState(true);
   const [libraryError, setLibraryError] = useState<string | null>(null);
@@ -485,12 +488,26 @@ export function ContractApp() {
     }
   }
 
+  function openReview(id?: string) {
+    void refreshLibrary();
+    setReviewId(id ?? null);
+    setView("review");
+    setSaveMessage(null);
+  }
+
   function startNew() {
     clearDraft(savedNosOf(library));
     setView("editor");
     setPane("form");
     setSaveMessage(null);
   }
+
+  const subtitle =
+    view === "library"
+      ? "คลังสัญญาที่บันทึกไว้"
+      : view === "review"
+        ? "รีวิวเอกสารและไฟล์แนบ"
+        : "จัดทำสัญญาบริการทำความสะอาด";
 
   if (!hydrated) {
     return (
@@ -529,12 +546,20 @@ export function ContractApp() {
               {COMPANY.shortName}
             </button>
             <p className="truncate text-xs text-muted-foreground">
-              {view === "library"
-                ? "คลังสัญญาที่บันทึกไว้"
-                : "จัดทำสัญญาบริการทำความสะอาด"}
+              {subtitle}
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
+            {view !== "review" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openReview()}
+              >
+                <FileSearch data-icon="inline-start" />
+                รีวิวเอกสาร
+              </Button>
+            ) : null}
             {view === "editor" ? (
               <>
                 <HomeBackButton
@@ -560,6 +585,13 @@ export function ContractApp() {
                   พิมพ์ / PDF
                 </Button>
               </>
+            ) : view === "review" ? (
+              <HomeBackButton
+                onClick={() => {
+                  void refreshLibrary();
+                  setView("library");
+                }}
+              />
             ) : (
               <Button size="sm" onClick={startNew}>
                 สร้างสัญญาใหม่
@@ -585,6 +617,18 @@ export function ContractApp() {
           onImportFile={(file) => void handleImportLibrary(file)}
           onSyncNow={() => void refreshLibrary()}
           onPickFolder={() => void handlePickSharedFolder()}
+          onReview={(id) => openReview(id)}
+        />
+      ) : view === "review" ? (
+        <ContractReview
+          items={library}
+          loading={libraryLoading}
+          initialId={reviewId}
+          onEdit={(id) => void openSaved(id)}
+          onBackToLibrary={() => {
+            void refreshLibrary();
+            setView("library");
+          }}
         />
       ) : (
         <div className="app-shell mx-auto grid max-w-[1600px] grid-cols-1 gap-6 px-4 py-4 pb-28 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)] lg:items-start lg:px-6 lg:py-6 lg:pb-6">
