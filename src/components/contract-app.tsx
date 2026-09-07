@@ -37,12 +37,18 @@ import {
   writePrintPayload,
 } from "@/lib/draft-store";
 import {
+  canUseSharedFolderSync,
+  hasSharedFolder,
+  pickSharedFolder,
+} from "@/lib/folder-sync";
+import {
   downloadLibraryFile,
   getSyncId,
   importLibraryFile,
   pushLibraryToCloud,
   readSyncIdFromLocation,
   resolveSyncId,
+  restoreLibraryBackupIfLocalEmpty,
   syncLibraryWithCloud,
 } from "@/lib/library-sync";
 import { appPath } from "@/lib/paths";
@@ -100,6 +106,7 @@ export function ContractApp() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
   const [syncHint, setSyncHint] = useState<string | null>(null);
+  const [folderReady, setFolderReady] = useState(false);
 
   const ctx = useMemo(() => buildContractContext(inputs), [inputs]);
   const missing = useMemo(() => missingRequiredFields(inputs), [inputs]);
@@ -172,12 +179,35 @@ export function ContractApp() {
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
+          if (canUseSharedFolderSync()) {
+            const ready = await hasSharedFolder();
+            if (!cancelled) setFolderReady(ready);
+          }
+          const restored = await restoreLibraryBackupIfLocalEmpty();
+          if (restored && !cancelled) {
+            setSyncHint("กู้คลังจากสำเนาสำรองในเครื่องแล้ว (กันข้อมูลหาย)");
+          }
           await resolveSyncId();
           if (cancelled) return;
           const bound = getSyncId();
-          if (bound) {
+          const folderBound = await hasSharedFolder();
+          if (bound || folderBound) {
             try {
-              await syncLibraryWithCloud(bound);
+              if (bound) {
+                const result = await syncLibraryWithCloud(bound);
+                if (!cancelled) {
+                  const rowsAfter = await listContracts();
+                  if (result === "pushed") {
+                    setSyncHint(
+                      `อัปโหลดคลังแล้ว ${rowsAfter.length} สัญญา`
+                    );
+                  } else if (result === "pulled" || result === "merged") {
+                    setSyncHint(
+                      `ซิงก์คลังแล้ว ${rowsAfter.length} สัญญา`
+                    );
+                  }
+                }
+              }
             } catch {
               // Offline / cloud down — still show local library.
             }
@@ -440,6 +470,21 @@ export function ContractApp() {
     }
   }
 
+  async function handlePickSharedFolder() {
+    try {
+      await pickSharedFolder();
+      setFolderReady(true);
+      setSyncHint(
+        "เลือกโฟลเดอร์ร่วมแล้ว — บันทึกสัญญาจะเขียนไฟล์ sanggan-clean-library.json ในโฟลเดอร์นี้"
+      );
+      await refreshLibrary();
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : "เลือกโฟลเดอร์ร่วมไม่สำเร็จ"
+      );
+    }
+  }
+
   function startNew() {
     clearDraft(savedNosOf(library));
     setView("editor");
@@ -530,6 +575,8 @@ export function ContractApp() {
           loading={libraryLoading}
           error={libraryError}
           syncHint={syncHint}
+          folderReady={folderReady}
+          folderSupported={canUseSharedFolderSync()}
           onNew={startNew}
           onOpen={(id) => void openSaved(id)}
           onDuplicate={(id) => void duplicateSaved(id)}
@@ -537,6 +584,7 @@ export function ContractApp() {
           onExportFile={() => void handleExportLibrary()}
           onImportFile={(file) => void handleImportLibrary(file)}
           onSyncNow={() => void refreshLibrary()}
+          onPickFolder={() => void handlePickSharedFolder()}
         />
       ) : (
         <div className="app-shell mx-auto grid max-w-[1600px] grid-cols-1 gap-6 px-4 py-4 pb-28 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)] lg:items-start lg:px-6 lg:py-6 lg:pb-6">

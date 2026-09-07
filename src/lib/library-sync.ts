@@ -1,7 +1,6 @@
 "use client";
 
 import type { ContractInputs } from "@/lib/contract";
-import { normalizeContractNo } from "@/lib/contract";
 import {
   createId,
   listAllAttachments,
@@ -11,9 +10,22 @@ import {
   type ContractAttachment,
   type SavedContract,
 } from "@/lib/contracts-db";
+import {
+  canUseSharedFolderSync,
+  hasSharedFolder,
+  readSharedLibrary,
+  writeSharedLibrary,
+} from "@/lib/folder-sync";
 import { withBasePath } from "@/lib/paths";
+import {
+  decideSyncAction,
+  mergeContractLists as mergeSyncContracts,
+  type SyncContract,
+  type SyncSnapshot,
+} from "@/lib/sync-core";
 
 export const LIBRARY_SYNC_KEY = "sanggan-clean-library-sync-id";
+export const LIBRARY_BACKUP_KEY = "sanggan-clean-library-safety-backup";
 export const LIBRARY_SNAPSHOT_VERSION = 1 as const;
 
 export type ExportedAttachment = AttachmentMeta & {
@@ -231,28 +243,48 @@ export function mergeContractLists(
   local: SavedContract[],
   remote: SavedContract[]
 ): SavedContract[] {
-  const byId = new Map<string, SavedContract>();
-  for (const row of [...normalizeContracts(local), ...normalizeContracts(remote)]) {
-    const prev = byId.get(row.id);
-    if (!prev || (row.updatedAt || 0) >= (prev.updatedAt || 0)) {
-      byId.set(row.id, row);
-    }
-  }
+  return mergeSyncContracts(
+    local as unknown as SyncContract[],
+    remote as unknown as SyncContract[]
+  ) as unknown as SavedContract[];
+}
 
-  const byNumber = new Map<string, SavedContract>();
-  for (const row of byId.values()) {
-    const key =
-      normalizeContractNo(row.inputs.contract_no, row.inputs.contract_date) ||
-      row.id;
-    const prev = byNumber.get(key);
-    if (!prev || (row.updatedAt || 0) >= (prev.updatedAt || 0)) {
-      byNumber.set(key, row);
-    }
-  }
+function toSyncSnapshot(snapshot: LibrarySnapshot): SyncSnapshot {
+  return {
+    version: 1,
+    exportedAt: snapshot.exportedAt || 0,
+    contracts: snapshot.contracts as unknown as SyncContract[],
+  };
+}
 
-  return [...byNumber.values()].sort(
-    (a, b) => (a.createdAt || 0) - (b.createdAt || 0)
-  );
+export async function backupLocalLibraryIfNonEmpty(): Promise<void> {
+  if (typeof window === "undefined") return;
+  try {
+    const snapshot = await buildLibrarySnapshot({ forCloud: true });
+    if (snapshot.contracts.length === 0) return;
+    window.localStorage.setItem(
+      LIBRARY_BACKUP_KEY,
+      JSON.stringify(snapshot)
+    );
+  } catch {
+    // ignore quota
+  }
+}
+
+export async function restoreLibraryBackupIfLocalEmpty(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  try {
+    const local = await listContracts();
+    if (local.length > 0) return false;
+    const raw = window.localStorage.getItem(LIBRARY_BACKUP_KEY);
+    if (!raw) return false;
+    const snapshot = parseLibrarySnapshot(JSON.parse(raw));
+    if (snapshot.contracts.length === 0) return false;
+    await importLibrarySnapshot(snapshot, { preserveLocalAttachments: true });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function contractFingerprint(rows: SavedContract[]): string {
@@ -435,18 +467,41 @@ export async function pushLibraryToCloud(
   options?: { forceNew?: boolean }
 ): Promise<string> {
   const snapshot = await buildLibrarySnapshot({ forCloud: true });
+  // Never push an empty library over the shared store (prevents wiping others).
+  if (snapshot.contracts.length === 0) {
+    throw new Error("คลังว่าง — ไม่บันทึกทับคลังร่วมเพื่อกันข้อมูลหาย");
+  }
   snapshot.exportedAt = Math.max(snapshot.exportedAt, Date.now());
-  const existing = options?.forceNew ? null : syncId || getSyncId();
+  await backupLocalLibraryIfNonEmpty();
 
-  if (existing) {
-    await cloudPut(existing, snapshot);
-    setSyncId(existing);
-    return existing;
+  // Preferred path: shared OneDrive/Drive folder.
+  let folderOk = false;
+  if (canUseSharedFolderSync() && (await hasSharedFolder())) {
+    try {
+      await writeSharedLibrary(snapshot);
+      folderOk = true;
+    } catch {
+      // Fall through to cloud if folder write fails.
+    }
   }
 
-  const id = await cloudCreate(snapshot);
-  setSyncId(id);
-  return id;
+  const existing = options?.forceNew ? null : syncId || getSyncId();
+
+  try {
+    if (existing) {
+      await cloudPut(existing, snapshot);
+      setSyncId(existing);
+      return existing;
+    }
+    const id = await cloudCreate(snapshot);
+    setSyncId(id);
+    return id;
+  } catch (error) {
+    if (folderOk) {
+      return existing || "folder-sync";
+    }
+    throw error;
+  }
 }
 
 export async function pullLibraryFromCloud(
@@ -458,7 +513,7 @@ export async function pullLibraryFromCloud(
 }
 
 async function applyMergedAndPush(
-  syncId: string,
+  syncId: string | null,
   local: LibrarySnapshot,
   remote: LibrarySnapshot
 ): Promise<"merged" | "pushed" | "pulled" | "noop"> {
@@ -478,12 +533,26 @@ async function applyMergedAndPush(
     attachments: [],
   };
 
+  if (merged.contracts.length === 0 && local.contracts.length > 0) {
+    return "noop";
+  }
+
   if (mergedFp !== localFp) {
+    await backupLocalLibraryIfNonEmpty();
     await importLibrarySnapshot(merged, { preserveLocalAttachments: true });
   }
-  if (mergedFp !== remoteFp) {
-    await cloudPut(syncId, merged);
-    setSyncId(syncId);
+  if (mergedFp !== remoteFp && merged.contracts.length > 0) {
+    if (canUseSharedFolderSync() && (await hasSharedFolder())) {
+      try {
+        await writeSharedLibrary(merged);
+      } catch {
+        // continue with cloud
+      }
+    }
+    if (syncId) {
+      await cloudPut(syncId, merged);
+      setSyncId(syncId);
+    }
   }
   if (mergedFp !== localFp && mergedFp !== remoteFp) return "merged";
   if (mergedFp !== localFp) return "pulled";
@@ -491,54 +560,68 @@ async function applyMergedAndPush(
 }
 
 /**
- * Prefer newer snapshots for deletes, but always union-merge when either side
- * has contracts the other is missing (e.g. 17 vs 15).
+ * Reconcile local + shared stores. Never replaces a non-empty local library
+ * with an empty/smaller remote wipe.
  */
 export async function syncLibraryWithCloud(
   syncId: string
 ): Promise<"merged" | "pulled" | "pushed" | "noop"> {
-  const remote = await pullLibraryFromCloud(syncId);
-  const local = await buildLibrarySnapshot({ forCloud: true });
-  const localStamp = local.exportedAt || 0;
-  const remoteStamp = remote.exportedAt || 0;
-  const localFp = contractFingerprint(local.contracts);
-  const remoteFp = contractFingerprint(remote.contracts);
-  const mergedFp = contractFingerprint(
-    mergeContractLists(local.contracts, remote.contracts)
-  );
+  await restoreLibraryBackupIfLocalEmpty();
 
-  // One side empty.
-  if (remote.contracts.length > 0 && local.contracts.length === 0) {
+  let remote: LibrarySnapshot = {
+    version: LIBRARY_SNAPSHOT_VERSION,
+    exportedAt: 0,
+    contracts: [],
+    attachments: [],
+  };
+
+  // Prefer shared folder when available.
+  if (canUseSharedFolderSync() && (await hasSharedFolder())) {
+    try {
+      const folder = await readSharedLibrary();
+      if (folder) {
+        remote = {
+          version: LIBRARY_SNAPSHOT_VERSION,
+          exportedAt: folder.exportedAt || 0,
+          contracts: normalizeContracts(folder.contracts as SavedContract[]),
+          attachments: [],
+        };
+      }
+    } catch {
+      // Fall back to cloud bin.
+    }
+  }
+
+  if (remote.contracts.length === 0) {
+    try {
+      remote = await pullLibraryFromCloud(syncId);
+    } catch {
+      remote = {
+        version: LIBRARY_SNAPSHOT_VERSION,
+        exportedAt: 0,
+        contracts: [],
+        attachments: [],
+      };
+    }
+  }
+
+  const local = await buildLibrarySnapshot({ forCloud: true });
+  const decision = decideSyncAction(toSyncSnapshot(local), toSyncSnapshot(remote));
+
+  if (decision.action === "noop") return "noop";
+
+  if (decision.action === "pull") {
+    if (remote.contracts.length === 0) return "noop";
+    await backupLocalLibraryIfNonEmpty();
     await importLibrarySnapshot(remote, { preserveLocalAttachments: true });
     return "pulled";
   }
-  if (local.contracts.length > 0 && remote.contracts.length === 0) {
+
+  if (decision.action === "push" || decision.action === "keep-local-push") {
+    if (local.contracts.length === 0) return "noop";
     await pushLibraryToCloud(syncId);
     return "pushed";
   }
 
-  // Either side is missing contracts the other has → union heal first.
-  if (mergedFp !== localFp || mergedFp !== remoteFp) {
-    // If remote is strictly newer AND is a complete superset, prefer replace
-    // only when merge equals remote (no local-only contracts).
-    if (
-      remoteStamp > localStamp + 500 &&
-      mergedFp === remoteFp &&
-      mergedFp !== localFp
-    ) {
-      await importLibrarySnapshot(remote, { preserveLocalAttachments: true });
-      return "pulled";
-    }
-    if (
-      localStamp > remoteStamp + 500 &&
-      mergedFp === localFp &&
-      mergedFp !== remoteFp
-    ) {
-      await pushLibraryToCloud(syncId);
-      return "pushed";
-    }
-    return applyMergedAndPush(syncId, local, remote);
-  }
-
-  return "noop";
+  return applyMergedAndPush(syncId, local, remote);
 }

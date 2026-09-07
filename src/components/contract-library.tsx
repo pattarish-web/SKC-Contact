@@ -9,6 +9,7 @@ import {
   Download,
   FilePlus2,
   FolderOpen,
+  FolderSync,
   Pencil,
   RefreshCw,
   Trash2,
@@ -28,6 +29,8 @@ export function ContractLibrary({
   loading,
   error,
   syncHint,
+  folderReady,
+  folderSupported,
   onNew,
   onOpen,
   onDuplicate,
@@ -35,11 +38,14 @@ export function ContractLibrary({
   onExportFile,
   onImportFile,
   onSyncNow,
+  onPickFolder,
 }: {
   items: SavedContract[];
   loading: boolean;
   error: string | null;
   syncHint?: string | null;
+  folderReady?: boolean;
+  folderSupported?: boolean;
   onNew: () => void;
   onOpen: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -47,6 +53,7 @@ export function ContractLibrary({
   onExportFile: () => void;
   onImportFile: (file: File) => void;
   onSyncNow: () => void;
+  onPickFolder: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -56,20 +63,34 @@ export function ContractLibrary({
         <div>
           <h1 className="text-lg font-semibold text-teal-950">คลังสัญญา</h1>
           <p className="text-sm text-muted-foreground">
-            มี {items.length} สัญญาในเครื่องนี้ — กด “ซิงก์คลัง” บนเครื่องที่มีครบสุด
-            แล้วค่อยรีเฟรชเครื่องอื่น
+            มี {items.length} สัญญาในเครื่องนี้
+            {folderReady
+              ? " · ใช้โฟลเดอร์ร่วมแล้ว (แนะนำ)"
+              : " · แนะนำให้เลือกโฟลเดอร์ OneDrive/ไดรฟ์ร่วมเพื่อไม่ให้ข้อมูลหาย"}
           </p>
           {syncHint ? (
             <p className="mt-1 text-xs font-medium text-teal-800">{syncHint}</p>
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
+          {folderSupported ? (
+            <Button
+              type="button"
+              size="sm"
+              variant={folderReady ? "outline" : "default"}
+              onClick={onPickFolder}
+              title="เลือกโฟลเดอร์ OneDrive / Google Drive / ไดรฟ์บริษัท ที่ทั้งสองเครื่องเข้าถึงได้"
+            >
+              <FolderSync data-icon="inline-start" />
+              {folderReady ? "เปลี่ยนโฟลเดอร์ร่วม" : "เลือกโฟลเดอร์ร่วม"}
+            </Button>
+          ) : null}
           <Button
             type="button"
             size="sm"
             variant="outline"
             onClick={onSyncNow}
-            title="ดึง/อัปโหลดคลังร่วมให้ครบทุกเครื่อง"
+            title="ดึง/อัปโหลดคลังให้ตรงกัน"
           >
             <RefreshCw data-icon="inline-start" />
             ซิงก์คลัง

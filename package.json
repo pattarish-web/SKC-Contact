@@ -8,7 +8,7 @@
     "build:pages": "GITHUB_PAGES=true NEXT_PUBLIC_BASE_PATH=/SKC-Contact next build",
     "start": "next start --hostname 0.0.0.0 --port 43123",
     "lint": "eslint",
-    "test": "npx tsx src/lib/contract.test.ts",
+    "test": "npx tsx src/lib/contract.test.ts && npx tsx src/lib/sync-core.test.ts",
     "deploy:pages": "bash scripts/deploy-pages.sh"
   },
   "dependencies": {
