@@ -390,7 +390,7 @@ export function emptyInputs(partial: Partial<ContractInputs> = {}): ContractInpu
     sow_scope: "",
     sow_equipment: "",
     contractor_authorized: "",
-    contractor_position: "ผู้มีอำนาจลงนาม",
+    contractor_position: "กรรมการผู้มีอำนาจ",
     witness_client: "",
     witness_contractor: "",
     ...rest,
@@ -527,7 +527,9 @@ export function buildContractContext(inputs: ContractInputs): ContractContext {
     total_with_vat,
     contractor_authorized: inputs.contractor_authorized.trim(),
     contractor_position:
-      inputs.contractor_position.trim() || "ผู้มีอำนาจลงนาม",
+      inputs.contractor_position.trim() ||
+      inputs.client_position.trim() ||
+      "กรรมการผู้มีอำนาจ",
     witness_client: inputs.witness_client.trim(),
     witness_contractor: inputs.witness_contractor.trim(),
     include_equipment: inputs.include_equipment,

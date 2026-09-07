@@ -346,16 +346,31 @@ export function ContractForm({
             onChange={(e) => onChange("contractor_authorized", e.target.value)}
           />
         </Field>
-        <PresetField
-          label="ตำแหน่งผู้ลงนามฝ่ายผู้รับจ้าง"
-          htmlFor="contractor_position"
-          value={inputs.contractor_position}
-          onChange={(value) => onChange("contractor_position", value)}
-          builtins={POSITION_PRESETS}
-          group="client_position"
-          placeholder="เช่น ผู้จัดการ"
-          hint="เลือกจากตัวเลือกด้านบน หรือพิมพ์เองแล้วกดเพิ่ม"
-        />
+        <div className="space-y-2">
+          <PresetField
+            label="ตำแหน่งผู้ลงนามฝ่ายผู้รับจ้าง"
+            htmlFor="contractor_position"
+            value={inputs.contractor_position}
+            onChange={(value) => onChange("contractor_position", value)}
+            builtins={POSITION_PRESETS}
+            group="client_position"
+            placeholder="เช่น ผู้จัดการ"
+            hint="ใช้ตัวเลือกเดียวกับตำแหน่งผู้ว่าจ้างด้านบน หรือพิมพ์เองแล้วกดเพิ่ม"
+          />
+          {inputs.client_position.trim() &&
+          inputs.client_position.trim() !== inputs.contractor_position.trim() ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                onChange("contractor_position", inputs.client_position.trim())
+              }
+            >
+              ใช้ตำแหน่งผู้ว่าจ้างด้านบน ({inputs.client_position.trim()})
+            </Button>
+          ) : null}
+        </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="พยานฝ่ายผู้ว่าจ้าง" htmlFor="witness_client">
             <Input
