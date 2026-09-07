@@ -79,10 +79,9 @@ export default function PrintPage() {
           <div className="min-w-0 text-sm text-zinc-700">
             <p>หากกล่องพิมพ์ไม่เปิดอัตโนมัติ ให้กดปุ่มพิมพ์ด้านขวา</p>
             <p className="mt-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-950">
-              เพื่อเอา URL / วันที่ / ชื่อหน้า ออก: ในหน้าต่างพิมพ์เปิด More
-              settings แล้วปิด{" "}
+              เลือกกระดาษ <span className="font-semibold">A4</span> และปิด{" "}
               <span className="font-semibold">Headers and footers</span>
-              {" "}(ส่วนหัวและส่วนท้าย)
+              {" "}หากขอบยังกว้าง ให้ตั้ง Margins เป็น Minimum หรือ None
             </p>
           </div>
         </div>
@@ -90,7 +89,7 @@ export default function PrintPage() {
           พิมพ์ / บันทึก PDF
         </Button>
       </div>
-      <div className="mx-auto max-w-[210mm] px-2 py-6 sm:px-4">
+      <div className="print-document mx-auto max-w-[210mm] px-2 py-6 sm:px-4 print:max-w-none print:p-0">
         <ContractDocument ctx={ctx} />
       </div>
     </main>
