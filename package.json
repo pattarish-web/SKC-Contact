@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0 --port 43123",
     "build": "next build",
+    "build:pages": "GITHUB_PAGES=true NEXT_PUBLIC_BASE_PATH=/SKC-Contact next build",
     "start": "next start --hostname 0.0.0.0 --port 43123",
     "lint": "eslint",
     "test": "npx tsx src/lib/contract.test.ts"

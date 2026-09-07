@@ -11,6 +11,7 @@ import {
   FLOWACCOUNT_MCP_URL,
   type FlowAccountDocType,
 } from "@/lib/flowaccount";
+import { appPath } from "@/lib/paths";
 import { Check, Copy, ExternalLink, LoaderCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -62,7 +63,7 @@ export function FlowAccountPanel({
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/flowaccount/documents")
+    fetch(appPath("/api/flowaccount/documents"))
       .then((res) => res.json())
       .then((data: { configured?: boolean }) => {
         if (!cancelled) setConfigured(Boolean(data.configured));
@@ -86,7 +87,7 @@ export function FlowAccountPanel({
     setError(null);
     setMessage(null);
     try {
-      const res = await fetch("/api/flowaccount/documents", {
+      const res = await fetch(appPath("/api/flowaccount/documents"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ docType, inputs }),

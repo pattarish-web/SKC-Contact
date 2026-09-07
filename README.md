@@ -24,6 +24,14 @@ npm run dev -- --port 43123
 
 เปิดเบราว์เซอร์ที่ [http://localhost:43123](http://localhost:43123)
 
+## GitHub Pages
+
+เว็บไซต์สาธารณะอยู่ที่:
+
+**https://pattarish-web.github.io/SKC-Contact/**
+
+ทุกครั้งที่ push ขึ้น `main` ระบบจะ build และอัปเดตหน้า GitHub Pages อัตโนมัติ
+
 สร้างไฟล์พร้อมใช้งานสำหรับขึ้นเซิร์ฟเวอร์:
 
 ```bash

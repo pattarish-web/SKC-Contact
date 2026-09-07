@@ -13,6 +13,7 @@ import {
   type ContractInputs,
 } from "@/lib/contract";
 import { clearDraft, useContractDraft } from "@/lib/draft-store";
+import { appPath } from "@/lib/paths";
 import { endDateFromStart, monthsFromRange } from "@/lib/thai";
 import { FileText, Printer, RotateCcw, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -70,7 +71,7 @@ export function ContractApp() {
   }
 
   function printContract() {
-    window.open("/print", "_blank");
+    window.open(appPath("/print"), "_blank");
   }
 
   return (
