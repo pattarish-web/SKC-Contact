@@ -3,6 +3,7 @@
 import { AttachmentPanel } from "@/components/attachment-panel";
 import { ConsumablesPanel } from "@/components/consumables-panel";
 import { PresetField } from "@/components/preset-field";
+import { StaffRolesPanel } from "@/components/staff-roles-panel";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -95,7 +96,7 @@ export function ContractForm({
               id="contract_no"
               value={inputs.contract_no}
               onChange={(e) => onChange("contract_no", e.target.value)}
-              placeholder="SC-2569-001"
+              placeholder="SC-2569-09-001"
             />
           </Field>
           <Field label="วันที่ทำสัญญา" htmlFor="contract_date">
@@ -195,26 +196,10 @@ export function ContractForm({
         <h2 className="text-sm font-semibold tracking-wide text-teal-800">
           พนักงานและค่าบริการ
         </h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="จำนวนพนักงาน (คน)" htmlFor="staff_count">
-            <Input
-              id="staff_count"
-              type="number"
-              min={1}
-              value={inputs.staff_count}
-              onChange={(e) => onChange("staff_count", e.target.value)}
-            />
-          </Field>
-          <Field label="ค่าจ้างต่อคน (บาท/เดือน)" htmlFor="price_per_head">
-            <Input
-              id="price_per_head"
-              inputMode="decimal"
-              value={inputs.price_per_head}
-              onChange={(e) => onChange("price_per_head", e.target.value)}
-              placeholder="15000"
-            />
-          </Field>
-        </div>
+        <StaffRolesPanel
+          roles={inputs.staff_roles}
+          onChange={(roles) => onChange("staff_roles", roles)}
+        />
         <PresetField
           label="วันปฏิบัติงาน"
           htmlFor="work_days"
@@ -233,16 +218,61 @@ export function ContractForm({
           group="work_hours"
           placeholder="เช่น 06.00-15.00 น."
         />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field
+            label="ค่าล่วงเวลา (บาท/ชั่วโมง)"
+            htmlFor="ot_rate"
+            hint="หมายเหตุแนบท้าย ข้อ 3"
+          >
+            <Input
+              id="ot_rate"
+              inputMode="decimal"
+              value={inputs.ot_rate}
+              onChange={(e) => onChange("ot_rate", e.target.value)}
+            />
+          </Field>
+          <Field
+            label="ค่าบริการวันหยุดนักขัตฤกษ์ (บาท/คน/วัน)"
+            htmlFor="holiday_rate"
+            hint="เมื่อผู้ว่าจ้างต้องการให้ทำงานในวันหยุดนักขัตฤกษ์"
+          >
+            <Input
+              id="holiday_rate"
+              inputMode="decimal"
+              value={inputs.holiday_rate}
+              onChange={(e) => onChange("holiday_rate", e.target.value)}
+            />
+          </Field>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold tracking-wide text-teal-800">
+          เอกสารแนบท้าย 2 — ขอบเขตงาน / อุปกรณ์
+        </h2>
         <Field
-          label="ค่าล่วงเวลา (บาท/ชั่วโมง)"
-          htmlFor="ot_rate"
-          hint="ใช้ในหมายเหตุแนบท้ายสัญญา ข้อ 3"
+          label="ขอบเขตงาน (Scope of Work)"
+          htmlFor="sow_scope"
+          hint="รายละเอียดพื้นที่ ขั้นตอน และวิธีการทำความสะอาด"
         >
-          <Input
-            id="ot_rate"
-            inputMode="decimal"
-            value={inputs.ot_rate}
-            onChange={(e) => onChange("ot_rate", e.target.value)}
+          <Textarea
+            id="sow_scope"
+            rows={4}
+            value={inputs.sow_scope}
+            onChange={(e) => onChange("sow_scope", e.target.value)}
+            placeholder="เช่น ทำความสะอาดโถงทางเดิน ห้องน้ำ พื้นที่สำนักงาน ตามรอบเช้า-เย็น"
+          />
+        </Field>
+        <Field
+          label="รายการอุปกรณ์ / น้ำยาทำความสะอาด"
+          htmlFor="sow_equipment"
+        >
+          <Textarea
+            id="sow_equipment"
+            rows={3}
+            value={inputs.sow_equipment}
+            onChange={(e) => onChange("sow_equipment", e.target.value)}
+            placeholder="เช่น ไม้ถูพื้น ไม้กวาด น้ำยาทำความสะอาดพื้น ถุงมือ"
           />
         </Field>
       </section>
@@ -297,6 +327,16 @@ export function ContractForm({
             onChange={(e) => onChange("contractor_authorized", e.target.value)}
           />
         </Field>
+        <PresetField
+          label="ตำแหน่งผู้ลงนามฝ่ายผู้รับจ้าง"
+          htmlFor="contractor_position"
+          value={inputs.contractor_position}
+          onChange={(value) => onChange("contractor_position", value)}
+          builtins={POSITION_PRESETS}
+          group="client_position"
+          placeholder="เช่น ผู้จัดการ"
+          hint="เลือกจากตัวเลือกด้านบน หรือพิมพ์เองแล้วกดเพิ่ม"
+        />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="พยานฝ่ายผู้ว่าจ้าง" htmlFor="witness_client">
             <Input
@@ -319,9 +359,12 @@ export function ContractForm({
         <h2 className="text-sm font-semibold text-teal-900">สรุปค่าบริการ</h2>
         <dl className="mt-3 space-y-1.5 text-sm">
           <div className="flex justify-between gap-4">
-            <dt className="text-teal-800">ค่าจ้างรายเดือน</dt>
+            <dt className="text-teal-800">
+              พนักงานทั้งหมด ({ctx.staff_count || 0} คน · {ctx.staff_roles.length}{" "}
+              ตำแหน่ง)
+            </dt>
             <dd className="font-semibold tabular-nums">
-              {formatMoney(ctx.monthly_total_raw)} บาท
+              {formatMoney(ctx.monthly_total_raw)} บาท/เดือน
             </dd>
           </div>
           <div className="flex justify-between gap-4">

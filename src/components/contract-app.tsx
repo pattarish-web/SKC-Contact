@@ -136,7 +136,7 @@ export function ContractApp() {
 
   function fillSample() {
     if (
-      (inputs.client_name || inputs.price_per_head) &&
+      (inputs.client_name || inputs.staff_roles.some((r) => r.price_per_head)) &&
       !window.confirm("แทนที่ข้อมูลปัจจุบันด้วยตัวอย่าง?")
     ) {
       return;
@@ -362,7 +362,7 @@ export function ContractApp() {
                 ตัวอย่างสัญญา
               </h2>
               <p className="text-xs text-muted-foreground">
-                2 หน้า · A4 · กดพิมพ์จะเปิดหน้าสัญญาใหม่
+                3 หน้า · A4 · กดพิมพ์จะเปิดหน้าสัญญาใหม่
               </p>
             </div>
             <div className="preview-frame overflow-auto rounded-2xl border border-border bg-neutral-200/70 p-3 sm:p-6">

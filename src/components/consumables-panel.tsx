@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   createConsumable,
+  createConsumableVariant,
   QUANTITY_PRESETS,
   TOILET_PAPER_SIZE_PRESETS,
   TRASH_BAG_SIZE_PRESETS,
@@ -39,18 +40,20 @@ function MiniChip({
   );
 }
 
-function sizePresetsFor(item: ConsumableSpec): readonly string[] {
-  if (item.id === "trash_bags" || item.name.includes("ถุงขยะ")) {
-    return TRASH_BAG_SIZE_PRESETS;
-  }
-  if (item.id === "toilet_paper" || item.name.includes("กระดาษ")) {
-    return TOILET_PAPER_SIZE_PRESETS;
-  }
-  return [];
+function isTrashBags(item: ConsumableSpec): boolean {
+  return item.id === "trash_bags" || item.name.includes("ถุงขยะ");
 }
 
 function isBuiltin(item: ConsumableSpec): boolean {
   return item.id === "trash_bags" || item.id === "toilet_paper";
+}
+
+function sizePresetsFor(item: ConsumableSpec): readonly string[] {
+  if (isTrashBags(item)) return TRASH_BAG_SIZE_PRESETS;
+  if (item.id === "toilet_paper" || item.name.includes("กระดาษ")) {
+    return TOILET_PAPER_SIZE_PRESETS;
+  }
+  return [];
 }
 
 export function ConsumablesPanel({
@@ -80,8 +83,60 @@ export function ConsumablesPanel({
         enabled: true,
         size: "",
         quantity: "ตามความเหมาะสม",
+        variants: [],
       }),
     ]);
+  }
+
+  function addVariant(itemId: string) {
+    onChange(
+      items.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              variants: [
+                ...item.variants,
+                createConsumableVariant({
+                  size: "",
+                  quantity: "ตามความเหมาะสม",
+                }),
+              ],
+            }
+          : item
+      )
+    );
+  }
+
+  function patchVariant(
+    itemId: string,
+    variantId: string,
+    partial: Partial<{ size: string; quantity: string }>
+  ) {
+    onChange(
+      items.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              variants: item.variants.map((v) =>
+                v.id === variantId ? { ...v, ...partial } : v
+              ),
+            }
+          : item
+      )
+    );
+  }
+
+  function removeVariant(itemId: string, variantId: string) {
+    onChange(
+      items.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              variants: item.variants.filter((v) => v.id !== variantId),
+            }
+          : item
+      )
+    );
   }
 
   return (
@@ -91,13 +146,14 @@ export function ConsumablesPanel({
           ถุงขยะ / กระดาษชำระ และวัสดุแยก
         </h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          ติ๊กว่าให้ผู้รับจ้างจัดหา แล้วใส่ขนาดกับจำนวนได้เอง
-          (จำนวนพิมพ์ตัวเลขหรือข้อความเช่น “ตามความเหมาะสม” ได้)
+          ติ๊กว่าให้ผู้รับจ้างจัดหา แล้วใส่ขนาดกับจำนวนได้เอง (จำนวนต่อเดือน
+          หรือข้อความเช่น “ตามความเหมาะสม”) — ถุงขยะเพิ่มได้หลายขนาดในสัญญาเดียว
         </p>
       </div>
 
       {items.map((item) => {
         const sizes = sizePresetsFor(item);
+        const multiSize = isTrashBags(item);
         return (
           <div
             key={item.id}
@@ -142,7 +198,97 @@ export function ConsumablesPanel({
               ) : null}
             </div>
 
-            {item.enabled ? (
+            {item.enabled && multiSize ? (
+              <div className="space-y-3">
+                {item.variants.map((variant, index) => (
+                  <div
+                    key={variant.id}
+                    className="space-y-2 rounded-lg border border-border/70 bg-white p-2.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-medium text-teal-900">
+                        ขนาดที่ {index + 1}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        disabled={item.variants.length <= 1}
+                        onClick={() => removeVariant(item.id, variant.id)}
+                        aria-label="ลบขนาด"
+                      >
+                        <Trash2 />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="grid gap-1.5">
+                        <Label>ขนาด</Label>
+                        <Input
+                          value={variant.size}
+                          onChange={(e) =>
+                            patchVariant(item.id, variant.id, {
+                              size: e.target.value,
+                            })
+                          }
+                          placeholder="เช่น 30x40 นิ้ว หรือพิมพ์ขนาดเอง"
+                        />
+                        <div className="flex flex-wrap gap-1">
+                          {TRASH_BAG_SIZE_PRESETS.map((size) => (
+                            <MiniChip
+                              key={size}
+                              active={variant.size === size}
+                              onClick={() =>
+                                patchVariant(item.id, variant.id, { size })
+                              }
+                            >
+                              {size}
+                            </MiniChip>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label>จำนวน (ต่อเดือน)</Label>
+                        <Input
+                          value={variant.quantity}
+                          onChange={(e) =>
+                            patchVariant(item.id, variant.id, {
+                              quantity: e.target.value,
+                            })
+                          }
+                          placeholder="เช่น 20 ใบ/เดือน หรือ ตามความเหมาะสม"
+                        />
+                        <div className="flex flex-wrap gap-1">
+                          {QUANTITY_PRESETS.map((qty) => (
+                            <MiniChip
+                              key={qty}
+                              active={variant.quantity === qty}
+                              onClick={() =>
+                                patchVariant(item.id, variant.id, {
+                                  quantity: qty,
+                                })
+                              }
+                            >
+                              {qty}
+                            </MiniChip>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addVariant(item.id)}
+                >
+                  <Plus data-icon="inline-start" />
+                  เพิ่มขนาดถุงขยะ
+                </Button>
+              </div>
+            ) : null}
+
+            {item.enabled && !multiSize ? (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="grid gap-1.5">
                   <Label htmlFor={`${item.id}-size`}>ขนาด</Label>
@@ -150,7 +296,7 @@ export function ConsumablesPanel({
                     id={`${item.id}-size`}
                     value={item.size}
                     onChange={(e) => patch(item.id, { size: e.target.value })}
-                    placeholder="เช่น 30x40 นิ้ว"
+                    placeholder="พิมพ์ขนาดเองได้"
                   />
                   {sizes.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
@@ -167,14 +313,14 @@ export function ConsumablesPanel({
                   ) : null}
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor={`${item.id}-qty`}>จำนวน</Label>
+                  <Label htmlFor={`${item.id}-qty`}>จำนวน (ต่อเดือน)</Label>
                   <Input
                     id={`${item.id}-qty`}
                     value={item.quantity}
                     onChange={(e) =>
                       patch(item.id, { quantity: e.target.value })
                     }
-                    placeholder="เช่น 2 แพ็ค/สัปดาห์ หรือ ตามความเหมาะสม"
+                    placeholder="เช่น 2 แพ็ค/เดือน หรือ ตามความเหมาะสม"
                   />
                   <div className="flex flex-wrap gap-1">
                     {QUANTITY_PRESETS.map((qty) => (

@@ -57,7 +57,7 @@ function SignLine({
         )}{" "}
         )
       </p>
-      {sub ? <p className="mt-0.5">{sub}</p> : null}
+      {sub ? <p className="mt-0.5 text-[12.5px]">{sub}</p> : null}
     </div>
   );
 }
@@ -74,7 +74,9 @@ function SignatureBlock({ ctx }: { ctx: ContractContext }) {
         <SignLine
           role="ผู้รับจ้าง"
           name={ctx.contractor_authorized}
-          sub={COMPANY.name}
+          sub={`${COMPANY.name}${
+            ctx.contractor_position ? ` · ${ctx.contractor_position}` : ""
+          }`}
         />
       </div>
       <div className="flex flex-col gap-8 sm:flex-row sm:justify-between">
@@ -85,11 +87,42 @@ function SignatureBlock({ ctx }: { ctx: ContractContext }) {
   );
 }
 
+function MultilineFill({
+  value,
+  fallback,
+}: {
+  value: string;
+  fallback: string;
+}) {
+  if (value.trim()) {
+    return (
+      <p className="whitespace-pre-wrap leading-6">
+        <span className="font-semibold">{value}</span>
+      </p>
+    );
+  }
+  return <p className="leading-6 text-neutral-500">{fallback}</p>;
+}
+
 export function ContractDocument({ ctx }: { ctx: ContractContext }) {
   const contractDate = formatThaiDate(ctx.contract_date);
   const startDate = formatThaiDate(ctx.start_date);
   const endDate = formatThaiDate(ctx.end_date);
   const monthsLabel = ctx.contract_months ? String(ctx.contract_months) : "";
+  const roles =
+    ctx.staff_roles.length > 0
+      ? ctx.staff_roles
+      : [
+          {
+            id: "fallback",
+            title: "พนักงานรักษาความสะอาด",
+            count: 0,
+            price_per_head: 0,
+            price_per_head_text: "0.00",
+            monthly: 0,
+            monthly_text: "0.00",
+          },
+        ];
 
   return (
     <div id="contract-print" className="contract-print-root">
@@ -116,9 +149,7 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
           </p>
         </div>
 
-        <p className="contract-indent mt-4">
-          สัญญาฉบับนี้ทำขึ้นระหว่าง
-        </p>
+        <p className="contract-indent mt-4">สัญญาฉบับนี้ทำขึ้นระหว่าง</p>
         <p className="contract-indent">
           <Fill value={ctx.client_name} /> ตั้งอยู่ที่{" "}
           <Fill value={ctx.client_address} /> โดย{" "}
@@ -129,8 +160,17 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
         </p>
         <p className="contract-indent">
           {COMPANY.name} (เลขทะเบียนนิติบุคคล : {COMPANY.registrationNo})
-          สำนักงานตั้งอยู่ {COMPANY.address} ซึ่งต่อไปในสัญญานี้จะเรียกว่า
-          “ผู้รับจ้าง” อีกฝ่ายหนึ่ง
+          สำนักงานตั้งอยู่ {COMPANY.address} โดย{" "}
+          <Fill
+            value={ctx.contractor_authorized}
+            fallback="................................"
+          />{" "}
+          <Fill
+            value={ctx.contractor_position}
+            fallback="ผู้มีอำนาจลงนาม"
+          />{" "}
+          ผู้มีอำนาจกระทำแทน ซึ่งต่อไปในสัญญานี้จะเรียกว่า “ผู้รับจ้าง”
+          อีกฝ่ายหนึ่ง
         </p>
 
         <p className="contract-indent mt-3">
@@ -146,39 +186,65 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
         <ol className="contract-clauses">
           <li>
             คู่สัญญาทั้งสองฝ่ายตกลงกำหนดขอบเขตของ “พื้นที่”
-            และรายละเอียดของงาน, ขั้นตอน, วิธีการทำความสะอาด
-            ปรากฏตามเอกสารแนบท้ายสัญญา
+            และรายละเอียดของงาน ขั้นตอน วิธีการทำความสะอาด
+            รวมถึงรายการอุปกรณ์และน้ำยาทำความสะอาด
+            ปรากฏตามเอกสารแนบท้ายสัญญา 2
           </li>
           <li>
             คู่สัญญาทั้งสองฝ่ายตกลงให้สัญญาฉบับนี้มีผลใช้บังคับ นับตั้งแต่วันที่{" "}
             <Fill value={startDate} /> ถึงวันที่ <Fill value={endDate} />{" "}
             (ระยะเวลา <Fill value={monthsLabel} fallback="......" /> เดือน)
-            ทั้งนี้หากคู่สัญญาฝ่ายหนึ่งฝ่ายใดประสงค์จะบอกเลิกสัญญาให้แจ้งเป็นลายลักษณ์อักษรให้กับคู่สัญญาอีกฝ่ายทราบล่วงหน้าไม่น้อยกว่า
-            30 (สามสิบ) วัน ก่อนที่จะเลิกสัญญานี้ได้
+            ทั้งนี้หากคู่สัญญาฝ่ายหนึ่งฝ่ายใดประสงค์จะบอกเลิกสัญญา
+            ให้แจ้งเป็นลายลักษณ์อักษรให้อีกฝ่ายทราบล่วงหน้าไม่น้อยกว่า 30
+            (สามสิบ) วัน ก่อนที่จะเลิกสัญญานี้ได้
             โดยไม่จำเป็นต้องแจ้งเหตุผลของการเลิกสัญญา
             และไม่ถือว่าคู่สัญญาฝ่ายนั้นผิดสัญญาแต่ประการใด
           </li>
           <li>
-            ผู้รับจ้างจะจัดหาพนักงานรักษาความสะอาด เข้าปฏิบัติหน้าที่ตามสัญญา
-            รายละเอียดตามเอกสารแนบท้ายสัญญา
+            ผู้รับจ้างจะจัดหาพนักงานรักษาความสะอาดเข้าปฏิบัติหน้าที่ตามสัญญา
+            รายละเอียดตามเอกสารแนบท้ายสัญญา 1
           </li>
           <li>
-            ผู้รับจ้างจะต้องจัดหาพนักงานรักษาความสะอาดเสริมหรือทดแทนกรณีที่พนักงานรักษาความสะอาดประจำมาปฏิบัติหน้าที่ไม่ได้
-            โดยผู้รับจ้างจะเป็นผู้กำหนดวันหยุดของพนักงานรักษาความสะอาดของผู้รับจ้างเอง
+            ผู้รับจ้างจะต้องจัดหาพนักงานรักษาความสะอาดเสริมหรือทดแทน
+            กรณีที่พนักงานรักษาความสะอาดประจำมาปฏิบัติหน้าที่ไม่ได้
+            โดยผู้รับจ้างจะเป็นผู้กำหนดวันหยุดของพนักงานของผู้รับจ้างเอง
             โดยไม่กระทบกับการทำงานตามสัญญา
             <span className="mt-1 block">
-              ในกรณีที่ผู้รับจ้างไม่สามารถจัดหาพนักงานทดแทนได้
-              ผู้ว่าจ้างจะจ่ายค่าจ้างตามส่วนของวันเวลาที่ได้ปฏิบัติงานจริงในแต่ละเดือน
-              โดยผู้รับจ้างยินยอมให้ผู้ว่าจ้างหักเงินค่าจ้างรายเดือนได้ตามจำนวนวันหรือเวลา
-              (แล้วแต่กรณี)
-              ที่พนักงานทำความสะอาดของผู้รับจ้างไม่ได้ทำงานนั้น
+              หากพนักงานประจำมาไม่ได้ ผู้รับจ้างมีเวลาจัดหาพนักงานทดแทนภายใน
+              3 ชั่วโมง นับจากเวลาเริ่มงานปกติ
+            </span>
+            <span className="mt-1 block">
+              กรณีจัดหาพนักงานทดแทนไม่ได้เต็มวัน
+              ผู้ว่าจ้างมีสิทธิตัดจ่ายค่าจ้างเฉพาะส่วนของพนักงานที่ไม่มาปฏิบัติงานตามอัตราส่วนรายวันจริง
+              โดยคำนวณจาก (ค่าบริการรายเดือนของพนักงานตำแหน่งนั้น ÷
+              จำนวนวันทำงานจริงในเดือนนั้น)
+            </span>
+            <span className="mt-1 block">
+              กรณีจัดหาพนักงานทดแทนได้แต่ล่าช้ากว่ากำหนด
+              ให้คิดค่าบริการตามส่วนชั่วโมงหรือครึ่งวันที่ได้ปฏิบัติงานจริง
+            </span>
+            <span className="mt-1 block">
+              ผู้รับจ้างจะออกใบลดหนี้ (Credit Note)
+              สำหรับยอดค่าบริการที่ถูกหักตามส่วนงานจริงดังกล่าว
+              เพื่อนำไปเป็นส่วนลดในการวางบิลชำระเงินของเดือนนั้นหรือรอบถัดไป
+            </span>
+            <span className="mt-1 block">
+              เมื่อผู้ว่าจ้างหักค่าบริการตามส่วนงานจริงที่ไม่ได้รับการปฏิบัติงานแล้ว
+              ผู้ว่าจ้างตกลงจะไม่คิดค่าปรับหรือเรียกค่าเสียหายอื่นใดเพิ่มเติมอีก
+              เพื่อไม่ให้ผู้รับจ้างเสียประโยชน์เกินสมควร
             </span>
           </li>
           <li>
             ผู้ว่าจ้างยินดีจ่ายค่าจ้างให้กับผู้รับจ้างสำหรับพนักงานรักษาความสะอาดประจำ
-            รายละเอียดตามเอกสารแนบท้ายสัญญา 1 (ซึ่งยังไม่รวมภาษีมูลค่าเพิ่ม)
-            ภายในวันที่ 30 ของทุก ๆ เดือน โดยเงื่อนไขการวางบิล/โอนชำระเงิน
-            ให้เป็นไปตามที่ผู้ว่าจ้างกำหนด
+            ตามรายละเอียดที่ระบุไว้ในเอกสารแนบท้ายสัญญา 1
+            (ซึ่งยังไม่รวมภาษีมูลค่าเพิ่ม) ภายในวันที่ 30 ของทุก ๆ เดือน
+            โดยเงื่อนไขการวางบิลหรือโอนชำระเงินให้เป็นไปตามที่ผู้ว่าจ้างกำหนด
+            <span className="mt-1 block">
+              กรณีผู้ว่าจ้างชำระเงินล่าช้าเกินกว่าวันที่ 30 ของเดือน
+              หรือเกินกำหนดชำระตามใบวางบิล
+              ผู้ว่าจ้างยินยอมเสียดอกเบี้ยผิดนัดชำระในอัตราร้อยละ 3 ต่อปี
+              นับแต่วันที่ครบกำหนดชำระจนกว่าจะชำระเสร็จสิ้น
+            </span>
           </li>
           <li>
             {ctx.equipment_clause}
@@ -211,7 +277,7 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
           </li>
           <li>
             ผู้รับจ้างตกลงจัดอุปกรณ์ให้พนักงานรักษาความสะอาดใช้ในการปฏิบัติหน้าที่ให้มีประสิทธิภาพ
-            โดยมีรายละเอียดตามเอกสารแนบท้ายสัญญา
+            โดยมีรายละเอียดตามเอกสารแนบท้ายสัญญา 2
           </li>
           <li>
             เมื่อผู้ว่าจ้างเห็นว่าพนักงานรักษาความสะอาดผู้ใดไม่เหมาะสมที่จะปฏิบัติหน้าที่
@@ -302,37 +368,46 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>พนักงานรักษาความสะอาด</td>
-                <td>
-                  <Fill value={ctx.work_days} fallback="........" />
-                </td>
-                <td>
-                  <Fill value={ctx.work_hours} fallback="........" />
-                </td>
-                <td>
-                  {ctx.staff_count ? `${ctx.staff_count} คน` : "...... คน"}
-                </td>
-                <td className="text-right">
-                  {ctx.price_per_head === "0.00" ? "........" : ctx.price_per_head}{" "}
-                  บาท
-                </td>
-                <td className="text-right">
-                  {ctx.monthly_total === "0.00" ? "........" : ctx.monthly_total}{" "}
-                  บาท
-                </td>
-              </tr>
+              {roles.map((role) => (
+                <tr key={role.id}>
+                  <td>
+                    <Fill value={role.title} fallback="........" />
+                  </td>
+                  <td>
+                    <Fill value={ctx.work_days} fallback="........" />
+                  </td>
+                  <td>
+                    <Fill value={ctx.work_hours} fallback="........" />
+                  </td>
+                  <td>
+                    {role.count > 0 ? `${role.count} คน` : "...... คน"}
+                  </td>
+                  <td className="text-right">
+                    {role.price_per_head > 0
+                      ? `${role.price_per_head_text} บาท`
+                      : "........ บาท"}
+                  </td>
+                  <td className="text-right">
+                    {role.monthly > 0
+                      ? `${role.monthly_text} บาท`
+                      : "........ บาท"}
+                  </td>
+                </tr>
+              ))}
               <tr className="font-semibold">
                 <td>รวม</td>
                 <td />
                 <td />
                 <td>
-                  {ctx.staff_count ? `${ctx.staff_count} คน` : "...... คน"}
+                  {ctx.staff_count > 0
+                    ? `${ctx.staff_count} คน`
+                    : "...... คน"}
                 </td>
                 <td />
                 <td className="text-right">
-                  {ctx.monthly_total === "0.00" ? "........" : ctx.monthly_total}{" "}
-                  บาท
+                  {ctx.monthly_total_raw > 0
+                    ? `${ctx.monthly_total} บาท`
+                    : "........ บาท"}
                 </td>
               </tr>
             </tbody>
@@ -342,6 +417,11 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
         <p className="mt-3">
           ปฏิบัติงาน: <Fill value={ctx.work_days} />{" "}
           (หยุดนักขัตฤกษ์ยึดตามผู้ว่าจ้าง)
+        </p>
+        <p>
+          กรณีผู้ว่าจ้างต้องการให้พนักงานปฏิบัติงานในวันหยุดนักขัตฤกษ์
+          คิดค่าบริการเพิ่มในอัตรา{" "}
+          <Fill value={ctx.holiday_rate} fallback="......" /> บาท/คน/วัน
         </p>
         <p>
           ระยะเวลาสัญญา: วันที่ <Fill value={startDate} /> ถึงวันที่{" "}
@@ -384,12 +464,61 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
             ทั้งนี้ไม่รวมวันนักขัตฤกษ์
           </li>
           <li>
-            ในกรณีที่พนักงานทำความสะอาด ลาป่วย ลากิจล่วงหน้า
-            ผู้รับจ้างต้องจัดส่งพนักงานเข้าทดแทนภายใน 2 ชั่วโมงจากเวลาปกติ
-            หากไม่สามารถจัดส่งตามกำหนด
-            ผู้รับจ้างยอมเสียค่าปรับตามที่ตกลงในสัญญา
+            ในกรณีที่พนักงานทำความสะอาดลาป่วยหรือลากิจล่วงหน้า
+            ผู้รับจ้างต้องจัดส่งพนักงานเข้าทดแทนภายใน 3
+            ชั่วโมงจากเวลาเริ่มงานปกติ หากจัดหาไม่ได้หรือมาปฏิบัติงานได้บางส่วน
+            ให้หักค่าบริการตามส่วนงานจริงและออกใบลดหนี้ (Credit Note)
+            ตามเงื่อนไขข้อ 4 ของสัญญาหลัก โดยไม่คิดค่าปรับเพิ่มเติม
           </li>
         </ol>
+
+        <SignatureBlock ctx={ctx} />
+      </article>
+
+      <article className="contract-page">
+        <header className="border-b-2 border-teal-800 pb-3 text-center">
+          <p className="text-[11px] tracking-wide text-teal-800">
+            {COMPANY.name}
+          </p>
+          <h1 className="mt-1 text-[20px] font-bold leading-tight">
+            เอกสารแนบท้ายสัญญา 2
+          </h1>
+          <p className="mt-1 text-[13px]">
+            ขอบเขตงาน (Scope of Work) และรายการอุปกรณ์/น้ำยาทำความสะอาด
+          </p>
+        </header>
+
+        <p className="mt-4">
+          อ้างอิงสัญญาเลขที่ <Fill value={ctx.contract_no} /> หน่วยงาน{" "}
+          <Fill value={ctx.client_name} />
+        </p>
+
+        <p className="mt-4 font-semibold">1. ขอบเขตงานและพื้นที่ให้บริการ</p>
+        <MultilineFill
+          value={ctx.sow_scope}
+          fallback=".............................................................................................................................................."
+        />
+
+        <p className="mt-4 font-semibold">
+          2. รายการอุปกรณ์ / เครื่องมือ / น้ำยาทำความสะอาด
+        </p>
+        <MultilineFill
+          value={ctx.sow_equipment}
+          fallback=".............................................................................................................................................."
+        />
+
+        <p className="mt-4 font-semibold">3. วัสดุสิ้นเปลืองที่ระบุในสัญญา</p>
+        {ctx.consumable_lines.length > 0 ? (
+          <ul className="mt-1 list-disc space-y-1 pl-6">
+            {ctx.consumable_lines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-1 text-neutral-500">
+            ..............................................................................................................................................
+          </p>
+        )}
 
         <SignatureBlock ctx={ctx} />
       </article>

@@ -3,6 +3,7 @@ import {
   buildContractContext,
   emptyInputs,
   missingRequiredFields,
+  normalizeStaffRoles,
 } from "./contract";
 import {
   bahtText,
@@ -34,7 +35,7 @@ assert.equal(monthsFromRange("2026-10-01", "2027-09-30"), 12);
 assert.equal(monthsFromRange("2026-10-01", "2026-09-01"), null);
 
 const sample = emptyInputs({
-  contract_no: "SC-2569-001",
+  contract_no: "SC-2569-09-001",
   contract_date: "2026-09-07",
   client_name: "บริษัท ตัวอย่าง พลาซ่า จำกัด",
   client_address: "กรุงเทพฯ",
@@ -42,8 +43,14 @@ const sample = emptyInputs({
   start_date: "2026-10-01",
   end_date: "2027-09-30",
   contract_months: "12",
-  staff_count: "2",
-  price_per_head: "15000",
+  staff_roles: [
+    {
+      id: "cleaner",
+      title: "พนักงานรักษาความสะอาด",
+      count: "2",
+      price_per_head: "15000",
+    },
+  ],
 });
 
 const ctx = buildContractContext(sample);
@@ -59,6 +66,35 @@ assert.equal(ctx.consumable_lines.length, 2);
 assert.match(ctx.consumable_lines[0]!, /ถุงขยะ/);
 assert.match(ctx.consumable_lines[1]!, /กระดาษชำระ/);
 
+const multi = emptyInputs({
+  ...sample,
+  staff_roles: [
+    {
+      id: "supervisor",
+      title: "หัวหน้าพนักงาน",
+      count: "1",
+      price_per_head: "18000",
+    },
+    {
+      id: "shift",
+      title: "พนักงานเป็นกะ",
+      count: "2",
+      price_per_head: "15000",
+    },
+  ],
+});
+const multiCtx = buildContractContext(multi);
+assert.equal(multiCtx.staff_count, 3);
+assert.equal(multiCtx.monthly_total_raw, 48000);
+assert.equal(multiCtx.staff_roles.length, 2);
+
+const legacy = normalizeStaffRoles(undefined, {
+  staff_count: "3",
+  price_per_head: "12000",
+});
+assert.equal(legacy.length, 1);
+assert.equal(legacy[0]!.count, "3");
+
 const withoutBags = emptyInputs({
   ...sample,
   consumables: [
@@ -68,6 +104,7 @@ const withoutBags = emptyInputs({
       enabled: false,
       size: "",
       quantity: "",
+      variants: [],
     },
     {
       id: "toilet_paper",
@@ -75,12 +112,42 @@ const withoutBags = emptyInputs({
       enabled: true,
       size: "ม้วนใหญ่",
       quantity: "ตามความเหมาะสม",
+      variants: [],
     },
   ],
 });
 const withoutBagsCtx = buildContractContext(withoutBags);
 assert.match(withoutBagsCtx.consumable_lines[0]!, /ไม่รวมถุงขยะ/);
 assert.match(withoutBagsCtx.consumable_lines[1]!, /ผู้รับจ้างจัดหากระดาษชำระ/);
+
+const multiBags = emptyInputs({
+  ...sample,
+  consumables: [
+    {
+      id: "trash_bags",
+      name: "ถุงขยะ",
+      enabled: true,
+      size: "",
+      quantity: "",
+      variants: [
+        { id: "a", size: "30x40 นิ้ว", quantity: "20 ใบ/เดือน" },
+        { id: "b", size: "36x45 นิ้ว", quantity: "10 ใบ/เดือน" },
+      ],
+    },
+    {
+      id: "toilet_paper",
+      name: "กระดาษชำระ",
+      enabled: true,
+      size: "ม้วนใหญ่",
+      quantity: "ตามความเหมาะสม",
+      variants: [],
+    },
+  ],
+});
+assert.match(
+  buildContractContext(multiBags).consumable_lines[0]!,
+  /30x40.*36x45/
+);
 
 const incomplete = emptyInputs({ client_name: "x" });
 assert.ok(missingRequiredFields(incomplete).includes("เลขที่สัญญา"));
