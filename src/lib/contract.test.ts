@@ -4,6 +4,7 @@ import {
   buildSampleInputs,
   DEFAULT_SOW_ELECTRICAL,
   DEFAULT_SOW_SHARED_MATERIALS,
+  DEFAULT_SOW_TOOLS,
   emptyInputs,
   formatQuantityPhrase,
   formatSowChecklist,
@@ -199,6 +200,22 @@ const sow = normalizeSowFields({
   sow_equipment: "ไม้กวาด ถังน้ำ",
 });
 assert.equal(sow.sow_tools, "ไม้กวาด ถังน้ำ");
+
+const clearedTools = normalizeSowFields({
+  sow_tools: "",
+  sow_equipment: DEFAULT_SOW_TOOLS,
+});
+assert.equal(clearedTools.sow_tools, "");
+assert.equal(clearedTools.sow_equipment, "");
+
+const sampleCtx = buildContractContext(
+  emptyInputs({
+    sow_tools: "",
+    sow_equipment: DEFAULT_SOW_TOOLS,
+    include_equipment: true,
+  })
+);
+assert.equal(sampleCtx.sow_tools, "");
 assert.match(DEFAULT_SOW_ELECTRICAL, /เครื่องดูดฝุ่น/);
 assert.match(DEFAULT_SOW_SHARED_MATERIALS, /น้ำยา/);
 

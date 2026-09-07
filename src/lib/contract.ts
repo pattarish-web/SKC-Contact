@@ -626,7 +626,10 @@ export function normalizeSowFields(
   "sow_scope" | "sow_tools" | "sow_electrical" | "sow_shared_materials"
 > & { sow_equipment: string } {
   const legacy = (partial?.sow_equipment || "").trim();
-  const tools = (partial?.sow_tools || "").trim() || legacy;
+  // Empty string is a real choice (user cleared 2.1). Only fall back when
+  // sow_tools is missing, which happens on old saved rows.
+  const tools =
+    partial?.sow_tools == null ? legacy : String(partial.sow_tools).trim();
   return {
     sow_scope: (partial?.sow_scope || "").trim(),
     sow_tools: tools,

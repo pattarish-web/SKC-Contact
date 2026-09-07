@@ -276,6 +276,10 @@ export function ContractApp() {
         }
       }
 
+      if (key === "sow_tools") {
+        next.sow_equipment = String(value ?? "");
+      }
+
       return next;
     });
   }
