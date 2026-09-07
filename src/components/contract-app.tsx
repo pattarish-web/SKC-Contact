@@ -95,6 +95,7 @@ export function ContractApp() {
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
+  const [syncHint, setSyncHint] = useState<string | null>(null);
 
   const ctx = useMemo(() => buildContractContext(inputs), [inputs]);
   const missing = useMemo(() => missingRequiredFields(inputs), [inputs]);
@@ -105,9 +106,27 @@ export function ContractApp() {
       const bound = (await resolveSyncId()) || getSyncId();
       if (bound) {
         try {
-          await syncLibraryWithCloud(bound);
-        } catch {
-          // Keep local library if cloud is temporarily unavailable.
+          const result = await syncLibraryWithCloud(bound);
+          const rowsAfter = await listContracts();
+          if (result === "pushed") {
+            setSyncHint(
+              `อัปโหลดคลังร่วมแล้ว ${rowsAfter.length} สัญญา — รีเฟรชเครื่องอื่นได้`
+            );
+          } else if (result === "pulled") {
+            setSyncHint(`ดึงคลังร่วมแล้ว ${rowsAfter.length} สัญญา`);
+          } else if (result === "merged") {
+            setSyncHint(
+              `รวมคลังแล้ว ${rowsAfter.length} สัญญา — ทุกเครื่องควรเห็นจำนวนเท่ากัน`
+            );
+          } else {
+            setSyncHint(`คลังพร้อมแล้ว ${rowsAfter.length} สัญญา`);
+          }
+        } catch (error) {
+          setSyncHint(
+            error instanceof Error
+              ? `ซิงก์ไม่สำเร็จ: ${error.message}`
+              : "ซิงก์คลังร่วมไม่สำเร็จ"
+          );
         }
       }
       const rows = await listContracts();
@@ -465,7 +484,7 @@ export function ContractApp() {
                 </Button>
                 <Button size="sm" onClick={() => void handleSave()}>
                   <Save data-icon="inline-start" />
-                  บันทึกสัญญา
+                  {activeId ? "อัปเดตสัญญา" : "บันทึกสัญญา"}
                 </Button>
                 <Button size="sm" onClick={printContract}>
                   <Printer data-icon="inline-start" />
@@ -486,12 +505,14 @@ export function ContractApp() {
           items={library}
           loading={libraryLoading}
           error={libraryError}
+          syncHint={syncHint}
           onNew={startNew}
           onOpen={(id) => void openSaved(id)}
           onDuplicate={(id) => void duplicateSaved(id)}
           onDelete={(id) => void removeSaved(id)}
           onExportFile={() => void handleExportLibrary()}
           onImportFile={(file) => void handleImportLibrary(file)}
+          onSyncNow={() => void refreshLibrary()}
         />
       ) : (
         <div className="app-shell mx-auto grid max-w-[1600px] grid-cols-1 gap-6 px-4 py-4 pb-28 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)] lg:items-start lg:px-6 lg:py-6 lg:pb-6">
@@ -592,7 +613,7 @@ export function ContractApp() {
               onClick={() => void handleSave()}
             >
               <Save data-icon="inline-start" />
-              บันทึก
+              {activeId ? "อัปเดต" : "บันทึก"}
             </Button>
             <Button className="flex-1" onClick={printContract}>
               <Printer data-icon="inline-start" />

@@ -358,10 +358,12 @@ async function decodeCloudBody(raw: unknown): Promise<LibrarySnapshot> {
 
 async function cloudGet(syncId: string): Promise<LibrarySnapshot> {
   const res = await fetch(
-    `${CLOUD_API}/${encodeURIComponent(syncId)}?t=${Date.now()}`,
+    `${CLOUD_API}/${encodeURIComponent(syncId)}?t=${Date.now()}&r=${Math.random()
+      .toString(36)
+      .slice(2)}`,
     {
       cache: "no-store",
-      headers: { Accept: "application/json" },
+      headers: { Accept: "*/*" },
     }
   );
   if (!res.ok) {
@@ -370,18 +372,29 @@ async function cloudGet(syncId: string): Promise<LibrarySnapshot> {
   return decodeCloudBody(await res.json());
 }
 
+/**
+ * Use text/plain so browsers skip CORS preflight.
+ * (extendsclass OPTIONS returns 500, which blocks application/json PUT)
+ */
 async function cloudPut(syncId: string, snapshot: LibrarySnapshot): Promise<void> {
   const body = await encodeCloudBody(snapshot);
   const res = await fetch(`${CLOUD_API}/${encodeURIComponent(syncId)}`, {
     method: "PUT",
     headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
+      "Content-Type": "text/plain;charset=UTF-8",
     },
     body,
   });
   if (!res.ok) {
     throw new Error("อัปเดตคลังคลาวด์ไม่สำเร็จ");
+  }
+  // Confirm the write actually stuck (CDN / silent failures).
+  const verified = await cloudGet(syncId);
+  if (
+    contractFingerprint(verified.contracts) !==
+    contractFingerprint(snapshot.contracts)
+  ) {
+    throw new Error("อัปเดตคลังคลาวด์แล้ว แต่ตรวจแล้วยังไม่ครบ — ลองอีกครั้ง");
   }
 }
 
@@ -390,8 +403,7 @@ async function cloudCreate(snapshot: LibrarySnapshot): Promise<string> {
   const res = await fetch(CLOUD_API, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
+      "Content-Type": "text/plain;charset=UTF-8",
     },
     body,
   });
@@ -432,39 +444,11 @@ export async function pullLibraryFromCloud(
   return snapshot;
 }
 
-/**
- * Prefer the newer full snapshot; if both sides have unique contracts with
- * equal-ish stamps, union-merge so incomplete libraries heal, then push back.
- */
-export async function syncLibraryWithCloud(
-  syncId: string
-): Promise<"merged" | "pulled" | "pushed" | "noop"> {
-  const remote = await pullLibraryFromCloud(syncId);
-  const local = await buildLibrarySnapshot({ forCloud: true });
-  const localStamp = local.exportedAt || 0;
-  const remoteStamp = remote.exportedAt || 0;
-
-  if (remote.contracts.length > 0 && local.contracts.length === 0) {
-    await importLibrarySnapshot(remote, { preserveLocalAttachments: true });
-    return "pulled";
-  }
-  if (local.contracts.length > 0 && remote.contracts.length === 0) {
-    await pushLibraryToCloud(syncId);
-    return "pushed";
-  }
-
-  // Newer cloud snapshot wins (covers deletes after a successful push).
-  if (remoteStamp > localStamp + 500) {
-    await importLibrarySnapshot(remote, { preserveLocalAttachments: true });
-    return "pulled";
-  }
-  // Newer local content wins.
-  if (localStamp > remoteStamp + 500) {
-    await pushLibraryToCloud(syncId);
-    return "pushed";
-  }
-
-  // Stamps close: union-merge to heal partial libraries across devices.
+async function applyMergedAndPush(
+  syncId: string,
+  local: LibrarySnapshot,
+  remote: LibrarySnapshot
+): Promise<"merged" | "pushed" | "pulled" | "noop"> {
   const mergedContracts = mergeContractLists(local.contracts, remote.contracts);
   const localFp = contractFingerprint(local.contracts);
   const remoteFp = contractFingerprint(remote.contracts);
@@ -476,7 +460,7 @@ export async function syncLibraryWithCloud(
 
   const merged: LibrarySnapshot = {
     version: LIBRARY_SNAPSHOT_VERSION,
-    exportedAt: Math.max(localStamp, remoteStamp, Date.now()),
+    exportedAt: Math.max(local.exportedAt || 0, remote.exportedAt || 0, Date.now()),
     contracts: mergedContracts,
     attachments: [],
   };
@@ -488,5 +472,60 @@ export async function syncLibraryWithCloud(
     await cloudPut(syncId, merged);
     setSyncId(syncId);
   }
-  return "merged";
+  if (mergedFp !== localFp && mergedFp !== remoteFp) return "merged";
+  if (mergedFp !== localFp) return "pulled";
+  return "pushed";
+}
+
+/**
+ * Prefer newer snapshots for deletes, but always union-merge when either side
+ * has contracts the other is missing (e.g. 17 vs 15).
+ */
+export async function syncLibraryWithCloud(
+  syncId: string
+): Promise<"merged" | "pulled" | "pushed" | "noop"> {
+  const remote = await pullLibraryFromCloud(syncId);
+  const local = await buildLibrarySnapshot({ forCloud: true });
+  const localStamp = local.exportedAt || 0;
+  const remoteStamp = remote.exportedAt || 0;
+  const localFp = contractFingerprint(local.contracts);
+  const remoteFp = contractFingerprint(remote.contracts);
+  const mergedFp = contractFingerprint(
+    mergeContractLists(local.contracts, remote.contracts)
+  );
+
+  // One side empty.
+  if (remote.contracts.length > 0 && local.contracts.length === 0) {
+    await importLibrarySnapshot(remote, { preserveLocalAttachments: true });
+    return "pulled";
+  }
+  if (local.contracts.length > 0 && remote.contracts.length === 0) {
+    await pushLibraryToCloud(syncId);
+    return "pushed";
+  }
+
+  // Either side is missing contracts the other has → union heal first.
+  if (mergedFp !== localFp || mergedFp !== remoteFp) {
+    // If remote is strictly newer AND is a complete superset, prefer replace
+    // only when merge equals remote (no local-only contracts).
+    if (
+      remoteStamp > localStamp + 500 &&
+      mergedFp === remoteFp &&
+      mergedFp !== localFp
+    ) {
+      await importLibrarySnapshot(remote, { preserveLocalAttachments: true });
+      return "pulled";
+    }
+    if (
+      localStamp > remoteStamp + 500 &&
+      mergedFp === localFp &&
+      mergedFp !== remoteFp
+    ) {
+      await pushLibraryToCloud(syncId);
+      return "pushed";
+    }
+    return applyMergedAndPush(syncId, local, remote);
+  }
+
+  return "noop";
 }

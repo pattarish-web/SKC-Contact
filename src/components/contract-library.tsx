@@ -10,6 +10,7 @@ import {
   FilePlus2,
   FolderOpen,
   Pencil,
+  RefreshCw,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -26,22 +27,26 @@ export function ContractLibrary({
   items,
   loading,
   error,
+  syncHint,
   onNew,
   onOpen,
   onDuplicate,
   onDelete,
   onExportFile,
   onImportFile,
+  onSyncNow,
 }: {
   items: SavedContract[];
   loading: boolean;
   error: string | null;
+  syncHint?: string | null;
   onNew: () => void;
   onOpen: (id: string) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
   onExportFile: () => void;
   onImportFile: (file: File) => void;
+  onSyncNow: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -51,10 +56,24 @@ export function ContractLibrary({
         <div>
           <h1 className="text-lg font-semibold text-teal-950">คลังสัญญา</h1>
           <p className="text-sm text-muted-foreground">
-            กดบันทึกสัญญาแล้วเก็บไว้ที่นี่ — เปิดหน้านี้เครื่องอื่นจะดึงคลังร่วมมาให้ครบ
+            มี {items.length} สัญญาในเครื่องนี้ — กด “ซิงก์คลัง” บนเครื่องที่มีครบสุด
+            แล้วค่อยรีเฟรชเครื่องอื่น
           </p>
+          {syncHint ? (
+            <p className="mt-1 text-xs font-medium text-teal-800">{syncHint}</p>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={onSyncNow}
+            title="ดึง/อัปโหลดคลังร่วมให้ครบทุกเครื่อง"
+          >
+            <RefreshCw data-icon="inline-start" />
+            ซิงก์คลัง
+          </Button>
           <Button
             type="button"
             size="sm"
