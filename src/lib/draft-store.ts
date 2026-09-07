@@ -189,8 +189,14 @@ const PRINT_PAYLOAD_KEY = "sanggan-clean-contract-print";
 
 export function writePrintPayload(inputs: ContractInputs) {
   if (typeof window === "undefined") return;
+  const raw = JSON.stringify(inputs);
   try {
-    window.sessionStorage.setItem(PRINT_PAYLOAD_KEY, JSON.stringify(inputs));
+    window.localStorage.setItem(PRINT_PAYLOAD_KEY, raw);
+  } catch {
+    // ignore quota / private mode
+  }
+  try {
+    window.sessionStorage.setItem(PRINT_PAYLOAD_KEY, raw);
   } catch {
     // ignore quota / private mode
   }
@@ -199,12 +205,11 @@ export function writePrintPayload(inputs: ContractInputs) {
 export function readPrintPayload(): ContractInputs | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.sessionStorage.getItem(PRINT_PAYLOAD_KEY);
-    if (!raw) {
-      const draft = window.localStorage.getItem(STORAGE_KEY);
-      if (!draft) return null;
-      return emptyInputs(JSON.parse(draft) as Partial<ContractInputs>);
-    }
+    const raw =
+      window.sessionStorage.getItem(PRINT_PAYLOAD_KEY) ||
+      window.localStorage.getItem(PRINT_PAYLOAD_KEY) ||
+      window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
     return emptyInputs(JSON.parse(raw) as Partial<ContractInputs>);
   } catch {
     return null;

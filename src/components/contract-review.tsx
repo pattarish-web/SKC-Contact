@@ -13,7 +13,7 @@ import {
   type AttachmentMeta,
   type SavedContract,
 } from "@/lib/contracts-db";
-import { formatThaiDate } from "@/lib/thai";
+import { formatThaiDate, formatUpdatedAt } from "@/lib/thai";
 import {
   Download,
   Eye,
@@ -62,28 +62,20 @@ export function ContractReview({
   onEdit: (id: string) => void;
   onBackToLibrary: () => void;
 }) {
-  const [selectedId, setSelectedId] = useState<string | null>(
-    initialId || items[0]?.id || null
-  );
+  const [pickedId, setPickedId] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<AttachmentMeta[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [attachLoading, setAttachLoading] = useState(false);
 
-  useEffect(() => {
-    if (initialId) {
-      setSelectedId(initialId);
-      return;
-    }
-    if (!selectedId && items[0]) {
-      setSelectedId(items[0].id);
-    } else if (
-      selectedId &&
-      items.length > 0 &&
-      !items.some((row) => row.id === selectedId)
-    ) {
-      setSelectedId(items[0]?.id ?? null);
-    }
-  }, [initialId, items, selectedId]);
+  const selectedId =
+    (pickedId && items.some((row) => row.id === pickedId)
+      ? pickedId
+      : null) ??
+    (initialId && items.some((row) => row.id === initialId)
+      ? initialId
+      : null) ??
+    items[0]?.id ??
+    null;
 
   const selected = useMemo(
     () => items.find((row) => row.id === selectedId) ?? null,
@@ -176,7 +168,7 @@ export function ContractReview({
                   <li key={item.id}>
                     <button
                       type="button"
-                      onClick={() => setSelectedId(item.id)}
+                      onClick={() => setPickedId(item.id)}
                       className={`w-full px-4 py-3 text-left transition-colors ${
                         active
                           ? "bg-teal-50"
@@ -221,8 +213,7 @@ export function ContractReview({
                   <p className="mt-0.5 truncate text-sm text-muted-foreground">
                     {selected.inputs.client_name || "ยังไม่ระบุผู้ว่าจ้าง"}
                     {" · "}
-                    แก้ไขล่าสุด{" "}
-                    {new Date(selected.updatedAt).toLocaleString("th-TH")}
+                    แก้ไขล่าสุด {formatUpdatedAt(selected.updatedAt)}
                   </p>
                 </div>
                 <Button

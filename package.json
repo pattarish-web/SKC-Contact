@@ -3,19 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --hostname 0.0.0.0 --port 43123",
+    "dev": "next dev --hostname 0.0.0.0 --port 43141",
     "build": "next build",
-    "build:pages": "GITHUB_PAGES=true NEXT_PUBLIC_BASE_PATH=/SKC-Contact next build",
-    "start": "next start --hostname 0.0.0.0 --port 43123",
+    "start": "next start --hostname 0.0.0.0 --port 43141",
     "lint": "eslint",
-    "test": "npx tsx src/lib/contract.test.ts && npx tsx src/lib/sync-core.test.ts",
-    "deploy:pages": "bash scripts/deploy-pages.sh"
+    "test": "npx tsx src/lib/audit.test.ts && npx tsx src/lib/central-store.test.ts && npx tsx src/lib/contract.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.2.6",
-    "lucide-react": "^1.41.0",
+    "lucide-react": "^1.42.0",
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",

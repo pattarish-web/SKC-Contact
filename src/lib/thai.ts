@@ -114,6 +114,15 @@ export function formatThaiDate(isoDate: string): string {
   return `${day} ${month} ${year}`;
 }
 
+/** Human timestamp for saved contracts. Epoch/missing values must not show 1/1/2513. */
+export function formatUpdatedAt(value: number | null | undefined): string {
+  const ms = Number(value);
+  if (!Number.isFinite(ms) || ms < 86_400_000) {
+    return "—";
+  }
+  return new Date(ms).toLocaleString("th-TH");
+}
+
 export function parseISODate(isoDate: string): Date | null {
   if (!isoDate) return null;
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);

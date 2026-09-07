@@ -38,20 +38,15 @@ import {
   writePrintPayload,
 } from "@/lib/draft-store";
 import {
-  canUseSharedFolderSync,
-  hasSharedFolder,
-  pickSharedFolder,
-} from "@/lib/folder-sync";
-import {
-  downloadLibraryFile,
-  getSyncId,
-  importLibraryFile,
-  pushLibraryToCloud,
-  readSyncIdFromLocation,
-  resolveSyncId,
-  restoreLibraryBackupIfLocalEmpty,
-  syncLibraryWithCloud,
-} from "@/lib/library-sync";
+  applyCentralContracts,
+  deleteContractOnCentral,
+  fingerprint,
+  pullCentralLibrary,
+  replaceCentralLibrary,
+  saveContractToCentral,
+  subscribeCentral,
+} from "@/lib/central-client";
+import { downloadLibraryFile, importLibraryFile } from "@/lib/library-file";
 import { appPath } from "@/lib/paths";
 import { endDateFromStart, monthsFromRange, todayISO } from "@/lib/thai";
 import {
@@ -109,51 +104,23 @@ export function ContractApp() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
   const [syncHint, setSyncHint] = useState<string | null>(null);
-  const [folderReady, setFolderReady] = useState(false);
+  const [liveConnected, setLiveConnected] = useState(false);
 
   const ctx = useMemo(() => buildContractContext(inputs), [inputs]);
   const missing = useMemo(() => missingRequiredFields(inputs), [inputs]);
 
-  const refreshLibrary = useCallback(async () => {
-    setLibraryLoading(true);
-    try {
-      const bound = (await resolveSyncId()) || getSyncId();
-      if (bound) {
-        try {
-          const result = await syncLibraryWithCloud(bound);
-          const rowsAfter = await listContracts();
-          if (result === "pushed") {
-            setSyncHint(
-              `อัปโหลดคลังร่วมแล้ว ${rowsAfter.length} สัญญา — รีเฟรชเครื่องอื่นได้`
-            );
-          } else if (result === "pulled") {
-            setSyncHint(`ดึงคลังร่วมแล้ว ${rowsAfter.length} สัญญา`);
-          } else if (result === "merged") {
-            setSyncHint(
-              `รวมคลังแล้ว ${rowsAfter.length} สัญญา — ทุกเครื่องควรเห็นจำนวนเท่ากัน`
-            );
-          } else {
-            setSyncHint(`คลังพร้อมแล้ว ${rowsAfter.length} สัญญา`);
-          }
-        } catch (error) {
-          setSyncHint(
-            error instanceof Error
-              ? `ซิงก์ไม่สำเร็จ: ${error.message}`
-              : "ซิงก์คลังร่วมไม่สำเร็จ"
-          );
-        }
-      }
-      const rows = await listContracts();
-      const nos = savedNosOf(rows);
-      reconcileSeqFromSaved(nos);
-      syncUnsavedDraftContractNo(nos);
-      setLibrary(rows);
-      setLibraryError(null);
-    } catch {
-      setLibraryError("โหลดคลังสัญญาไม่สำเร็จ");
-    } finally {
-      setLibraryLoading(false);
+  const applyLive = useCallback(async (rows: SavedContract[]) => {
+    const current = await listContracts();
+    if (fingerprint(current) !== fingerprint(rows)) {
+      await applyCentralContracts(rows);
     }
+    const nos = savedNosOf(rows);
+    reconcileSeqFromSaved(nos);
+    syncUnsavedDraftContractNo(nos);
+    setLibrary(rows);
+    setLibraryError(null);
+    setLibraryLoading(false);
+    setSyncHint(`คลังกลางพร้อมแล้ว ${rows.length} สัญญา · อัปเดตอัตโนมัติ`);
   }, []);
 
   const reloadLocalLibrary = useCallback(async () => {
@@ -166,93 +133,75 @@ export function ContractApp() {
     setLibraryLoading(false);
   }, []);
 
-  async function quietPushCloud(): Promise<boolean> {
-    const id = (await resolveSyncId()) || getSyncId();
-    if (!id) return false;
+  const refreshLibrary = useCallback(async () => {
+    setLibraryLoading(true);
     try {
-      await pushLibraryToCloud(id);
+      const rows = await pullCentralLibrary();
+      await applyLive(rows);
+    } catch {
+      try {
+        await reloadLocalLibrary();
+        setLibraryError("เชื่อมคลังกลางไม่ได้ — แสดงข้อมูลในเครื่องนี้");
+      } catch {
+        setLibraryError("โหลดคลังสัญญาไม่สำเร็จ");
+        setLibraryLoading(false);
+      }
+    }
+  }, [applyLive, reloadLocalLibrary]);
+
+  async function quietPush(row: SavedContract): Promise<boolean> {
+    try {
+      const next = await saveContractToCentral(row);
+      await applyLive(next);
       return true;
     } catch {
       return false;
     }
   }
 
+  async function latestContracts(): Promise<SavedContract[]> {
+    try {
+      const rows = await pullCentralLibrary();
+      await applyLive(rows);
+      return rows;
+    } catch {
+      return listContracts();
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
-    const timer = window.setTimeout(() => {
-      void (async () => {
+    void (async () => {
+      try {
+        const rows = await pullCentralLibrary();
+        if (!cancelled) await applyLive(rows);
+      } catch {
+        if (cancelled) return;
         try {
-          if (canUseSharedFolderSync()) {
-            const ready = await hasSharedFolder();
-            if (!cancelled) setFolderReady(ready);
-          }
-          const restored = await restoreLibraryBackupIfLocalEmpty();
-          if (restored && !cancelled) {
-            setSyncHint("กู้คลังจากสำเนาสำรองในเครื่องแล้ว (กันข้อมูลหาย)");
-          }
-          await resolveSyncId();
-          if (cancelled) return;
-          const bound = getSyncId();
-          const folderBound = await hasSharedFolder();
-          if (bound || folderBound) {
-            try {
-              if (bound) {
-                const result = await syncLibraryWithCloud(bound);
-                if (!cancelled) {
-                  const rowsAfter = await listContracts();
-                  if (result === "pushed") {
-                    setSyncHint(
-                      `อัปโหลดคลังแล้ว ${rowsAfter.length} สัญญา`
-                    );
-                  } else if (result === "pulled" || result === "merged") {
-                    setSyncHint(
-                      `ซิงก์คลังแล้ว ${rowsAfter.length} สัญญา`
-                    );
-                  }
-                }
-              }
-            } catch {
-              // Offline / cloud down — still show local library.
-            }
-          }
-
-          if (readSyncIdFromLocation()) {
-            const url = new URL(window.location.href);
-            url.searchParams.delete("sync");
-            window.history.replaceState({}, "", url.toString());
-          }
-
-          const rows = await listContracts();
-          if (cancelled) return;
-          const nos = savedNosOf(rows);
-          reconcileSeqFromSaved(nos);
-          syncUnsavedDraftContractNo(nos);
-          setLibrary(rows);
-          setLibraryError(null);
+          await reloadLocalLibrary();
+          setLibraryError("เชื่อมคลังกลางไม่ได้ — แสดงข้อมูลในเครื่องนี้");
+        } catch {
+          setLibraryError("โหลดคลังสัญญาไม่สำเร็จ");
           setLibraryLoading(false);
-        } catch (error) {
-          if (!cancelled) {
-            setLibraryError(
-              error instanceof Error
-                ? error.message
-                : "โหลดคลังสัญญาไม่สำเร็จ"
-            );
-            setLibraryLoading(false);
-            try {
-              const rows = await listContracts();
-              setLibrary(rows);
-            } catch {
-              // ignore
-            }
-          }
         }
-      })();
-    }, 0);
+      }
+    })();
+    const stop = subscribeCentral(
+      (rows) => {
+        void applyLive(rows);
+      },
+      (connected) => {
+        setLiveConnected(connected);
+        if (!connected) {
+          setSyncHint("ขาดการเชื่อมคลังกลาง — กำลังต่อใหม่");
+        }
+      }
+    );
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
+      stop();
     };
-  }, []);
+  }, [applyLive, reloadLocalLibrary]);
 
   function update<K extends keyof ContractInputs>(
     key: K,
@@ -335,7 +284,7 @@ export function ContractApp() {
       return;
     }
     try {
-      const latest = await listContracts();
+      const latest = await latestContracts();
       const nos = savedNosOf(latest);
       // Read at click-time so a stale React render cannot drop the editing id.
       const sessionId = getDraftActiveId() ?? activeId;
@@ -371,15 +320,14 @@ export function ContractApp() {
         saved.inputs.contract_date
       );
       loadContractIntoDraft(saved.id, saved.inputs);
-      const cloudOk = await quietPushCloud();
-      await reloadLocalLibrary();
+      const cloudOk = await quietPush(saved);
       const action = sessionId
         ? `อัปเดตสัญญา ${saved.inputs.contract_no} แล้ว`
         : `สร้างสัญญา ${saved.inputs.contract_no} แล้ว`;
       setSaveMessage(
         cloudOk
-          ? `${action} · เครื่องอื่นเปิดเว็บนี้จะเห็นตาม`
-          : `${action} ในเครื่อง · แต่ส่งขึ้นคลังร่วมไม่สำเร็จ ลองบันทึกอีกครั้ง`
+          ? `${action} · เครื่องอื่นเห็นทันที`
+          : `${action} ในเครื่อง · แต่ส่งขึ้นคลังกลางไม่สำเร็จ ลองบันทึกอีกครั้ง`
       );
     } catch {
       window.alert("บันทึกสัญญาไม่สำเร็จ");
@@ -404,8 +352,13 @@ export function ContractApp() {
     await deleteContract(id);
     const remaining = library.filter((r) => r.id !== id);
     if (activeId === id) clearDraft(savedNosOf(remaining));
-    await quietPushCloud();
-    await reloadLocalLibrary();
+    try {
+      const next = await deleteContractOnCentral(id);
+      await applyLive(next);
+    } catch {
+      await reloadLocalLibrary();
+      window.alert("ลบในเครื่องแล้ว แต่คลังกลางยังไม่ทัน");
+    }
   }
 
   async function duplicateSaved(id: string) {
@@ -416,7 +369,7 @@ export function ContractApp() {
       return;
     }
     try {
-      const latest = await listContracts();
+      const latest = await latestContracts();
       const nos = savedNosOf(latest);
       const renewal = buildRenewalInputs(row.inputs, nos);
       const payload = {
@@ -425,8 +378,7 @@ export function ContractApp() {
       };
       const saved = await saveContract(payload);
       loadContractIntoDraft(saved.id, saved.inputs);
-      await quietPushCloud();
-      await reloadLocalLibrary();
+      await quietPush(saved);
       setView("editor");
       setPane("form");
       setSaveMessage(
@@ -451,7 +403,7 @@ export function ContractApp() {
   async function handleImportLibrary(file: File) {
     if (
       !window.confirm(
-        "นำเข้าจะแทนที่คลังสัญญาบนเครื่องนี้ทั้งหมด ต้องการทำต่อหรือไม่?"
+        "นำเข้าจะแทนที่คลังกลางทั้งหมด ทุกเครื่องจะเห็นชุดนี้ ต้องการทำต่อหรือไม่?"
       )
     ) {
       return;
@@ -459,10 +411,11 @@ export function ContractApp() {
     try {
       setLibraryLoading(true);
       const result = await importLibraryFile(file);
-      await quietPushCloud();
-      await reloadLocalLibrary();
+      const rows = await listContracts();
+      const next = await replaceCentralLibrary(rows);
+      await applyLive(next);
       setSaveMessage(
-        `นำเข้าแล้ว ${result.contracts} สัญญา (${result.attachments} ไฟล์แนบ)`
+        `นำเข้าแล้ว ${result.contracts} สัญญาเข้าคลังกลาง (${result.attachments} ไฟล์แนบในเครื่องนี้)`
       );
       setView("library");
     } catch (error) {
@@ -470,21 +423,6 @@ export function ContractApp() {
         error instanceof Error ? error.message : "นำเข้าคลังไม่สำเร็จ"
       );
       setLibraryLoading(false);
-    }
-  }
-
-  async function handlePickSharedFolder() {
-    try {
-      await pickSharedFolder();
-      setFolderReady(true);
-      setSyncHint(
-        "เลือกโฟลเดอร์ร่วมแล้ว — บันทึกสัญญาจะเขียนไฟล์ sanggan-clean-library.json ในโฟลเดอร์นี้"
-      );
-      await refreshLibrary();
-    } catch (error) {
-      window.alert(
-        error instanceof Error ? error.message : "เลือกโฟลเดอร์ร่วมไม่สำเร็จ"
-      );
     }
   }
 
@@ -504,7 +442,7 @@ export function ContractApp() {
 
   const subtitle =
     view === "library"
-      ? "คลังสัญญาที่บันทึกไว้"
+      ? "คลังกลาง · ทุกเครื่องเห็นชุดเดียวกันทันที"
       : view === "review"
         ? "รีวิวเอกสารและไฟล์แนบ"
         : "จัดทำสัญญาบริการทำความสะอาด";
@@ -520,7 +458,8 @@ export function ContractApp() {
   return (
     <div className="min-h-full bg-[oklch(0.97_0.01_175)]">
       <header className="no-print sticky top-0 z-20 border-b border-teal-900/10 bg-[oklch(0.99_0.01_175)]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-[1600px] items-center gap-3 px-4 py-3 sm:px-6">
+        <div className="mx-auto max-w-[1600px] px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-3">
           <button
             type="button"
             className="shrink-0 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40"
@@ -549,7 +488,7 @@ export function ContractApp() {
               {subtitle}
             </p>
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="hidden flex-wrap items-center justify-end gap-2 sm:flex">
             {view !== "review" ? (
               <Button
                 variant="outline"
@@ -598,6 +537,32 @@ export function ContractApp() {
               </Button>
             )}
           </div>
+          </div>
+          {view === "library" ? (
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:hidden">
+              <Button
+                variant="outline"
+                className="h-11"
+                onClick={() => openReview()}
+              >
+                <FileSearch data-icon="inline-start" />
+                รีวิวเอกสาร
+              </Button>
+              <Button className="h-11" onClick={startNew}>
+                สร้างสัญญาใหม่
+              </Button>
+            </div>
+          ) : view === "review" ? (
+            <div className="mt-3 sm:hidden">
+              <HomeBackButton
+                className="h-11 w-full"
+                onClick={() => {
+                  void refreshLibrary();
+                  setView("library");
+                }}
+              />
+            </div>
+          ) : null}
         </div>
       </header>
 
@@ -606,21 +571,19 @@ export function ContractApp() {
           items={library}
           loading={libraryLoading}
           error={libraryError}
-          syncHint={syncHint}
-          folderReady={folderReady}
-          folderSupported={canUseSharedFolderSync()}
+          liveHint={syncHint}
+          liveConnected={liveConnected}
           onNew={startNew}
           onOpen={(id) => void openSaved(id)}
           onDuplicate={(id) => void duplicateSaved(id)}
           onDelete={(id) => void removeSaved(id)}
           onExportFile={() => void handleExportLibrary()}
           onImportFile={(file) => void handleImportLibrary(file)}
-          onSyncNow={() => void refreshLibrary()}
-          onPickFolder={() => void handlePickSharedFolder()}
           onReview={(id) => openReview(id)}
         />
       ) : view === "review" ? (
         <ContractReview
+          key={reviewId ?? "all"}
           items={library}
           loading={libraryLoading}
           initialId={reviewId}
