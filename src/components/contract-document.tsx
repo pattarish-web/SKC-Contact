@@ -590,7 +590,6 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
     },
     {
       key: "closing",
-      keepWithNext: true,
       node: (
         <p className="contract-indent mt-3">
           สัญญานี้ทำขึ้นเป็นสองฉบับมีข้อความถูกต้องตรงกัน
@@ -778,7 +777,6 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
     },
     {
       key: "a1-note-3",
-      keepWithNext: true,
       node: (
         <p className="clause-sub">
           3. ในกรณีที่พนักงานทำความสะอาดลาป่วยหรือลากิจล่วงหน้า
