@@ -31,11 +31,13 @@ function Fill({
 function SignLine({
   role,
   name,
-  sub,
+  company,
+  position,
 }: {
   role: string;
   name?: string;
-  sub?: string;
+  company?: string;
+  position?: string;
 }) {
   return (
     <div className="flex min-w-[220px] flex-1 flex-col items-center text-center">
@@ -57,7 +59,19 @@ function SignLine({
         )}{" "}
         )
       </p>
-      {sub ? <p className="mt-0.5 text-[12.5px]">{sub}</p> : null}
+      {company ? (
+        <p className="mt-0.5 text-[12.5px] font-medium">{company}</p>
+      ) : null}
+      <p className="mt-0.5 text-[12.5px]">
+        ตำแหน่ง{" "}
+        {position?.trim() ? (
+          <span className="font-semibold">{position}</span>
+        ) : (
+          <span className="inline-block min-w-[8rem] border-b border-dotted border-neutral-400">
+            &nbsp;
+          </span>
+        )}
+      </p>
     </div>
   );
 }
@@ -69,19 +83,24 @@ function SignatureBlock({ ctx }: { ctx: ContractContext }) {
         <SignLine
           role="ผู้ว่าจ้าง"
           name={ctx.client_authorized}
-          sub={ctx.client_position}
+          position={ctx.client_position}
         />
         <SignLine
           role="ผู้รับจ้าง"
           name={ctx.contractor_authorized}
-          sub={`${COMPANY.name}${
-            ctx.contractor_position ? ` · ${ctx.contractor_position}` : ""
-          }`}
+          company={COMPANY.name}
+          position={ctx.contractor_position || "ผู้มีอำนาจลงนาม"}
         />
       </div>
       <div className="flex flex-col gap-8 sm:flex-row sm:justify-between">
-        <SignLine role="พยาน" name={ctx.witness_client} />
-        <SignLine role="พยาน" name={ctx.witness_contractor} />
+        <SignLine
+          role="พยานฝ่ายผู้ว่าจ้าง"
+          name={ctx.witness_client}
+        />
+        <SignLine
+          role="พยานฝ่ายผู้รับจ้าง"
+          name={ctx.witness_contractor}
+        />
       </div>
     </div>
   );
@@ -422,6 +441,9 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
           กรณีผู้ว่าจ้างต้องการให้พนักงานปฏิบัติงานในวันหยุดนักขัตฤกษ์
           คิดค่าบริการเพิ่มในอัตรา{" "}
           <Fill value={ctx.holiday_rate} fallback="......" /> บาท/คน/วัน
+          หรืออัตราชั่วโมงละ{" "}
+          <Fill value={ctx.ot_rate} fallback="......" /> บาท
+          ตามที่คู่สัญญาตกลงกัน
         </p>
         <p>
           ระยะเวลาสัญญา: วันที่ <Fill value={startDate} /> ถึงวันที่{" "}
