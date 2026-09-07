@@ -31,4 +31,10 @@ const empty = parseGvizText(
 );
 assert.equal(empty.length, 0);
 
+const unlabeledHeader = `google.visualization.Query.setResponse({"version":"0.6","status":"ok","table":{"cols":[{"id":"A","label":"","type":"string"},{"id":"B","label":"","type":"string"},{"id":"C","label":"","type":"string"},{"id":"N","label":"","type":"string"}],"rows":[{"c":[{"v":"id"},{"v":"contract_no"},{"v":"client_name"},{"v":"json"}]},{"c":[{"v":"contract_9"},{"v":"SC-2569-09-009"},{"v":"จากชีต"},{"v":"{\\"id\\":\\"contract_9\\",\\"inputs\\":{\\"client_name\\":\\"จากชีต\\"},\\"createdAt\\":1750000003000,\\"updatedAt\\":1750000003000,\\"notes\\":\\"\\"}"}]}]}});`;
+const remapped = rowsToContracts(parseGvizText(unlabeledHeader));
+assert.equal(remapped.length, 1);
+assert.equal(remapped[0]?.id, "contract_9");
+assert.equal(remapped[0]?.inputs.client_name, "จากชีต");
+
 console.log("sheets.test.ts: all assertions passed");
