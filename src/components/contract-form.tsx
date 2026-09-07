@@ -14,6 +14,7 @@ import {
   POSITION_PRESETS,
   WORK_DAY_PRESETS,
   WORK_HOUR_PRESETS,
+  allocateContractNo,
 } from "@/lib/contract";
 import { formatMoney } from "@/lib/thai";
 import { RotateCcw, Sparkles } from "lucide-react";
@@ -91,13 +92,31 @@ export function ContractForm({
           ข้อมูลสัญญา
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="เลขที่สัญญา" htmlFor="contract_no">
-            <Input
-              id="contract_no"
-              value={inputs.contract_no}
-              onChange={(e) => onChange("contract_no", e.target.value)}
-              placeholder="SC-2569-09-001"
-            />
+          <Field
+            label="เลขที่สัญญา"
+            htmlFor="contract_no"
+            hint="รูปแบบ SC-ปีพ.ศ.-เดือน-ลำดับ เช่น SC-2569-09-001"
+          >
+            <div className="flex gap-2">
+              <Input
+                id="contract_no"
+                value={inputs.contract_no}
+                onChange={(e) => onChange("contract_no", e.target.value)}
+                placeholder="SC-2569-09-001"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={() =>
+                  onChange("contract_no", allocateContractNo(inputs.contract_date))
+                }
+                title="สร้างเลขที่ใหม่ตามรูปแบบ SC-ปี-เดือน-ลำดับ"
+              >
+                เลขใหม่
+              </Button>
+            </div>
           </Field>
           <Field label="วันที่ทำสัญญา" htmlFor="contract_date">
             <Input

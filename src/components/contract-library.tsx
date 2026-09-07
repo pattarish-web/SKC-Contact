@@ -2,8 +2,16 @@
 
 import { Button } from "@/components/ui/button";
 import type { SavedContract } from "@/lib/contracts-db";
+import { normalizeContractNo } from "@/lib/contract";
 import { formatThaiDate } from "@/lib/thai";
 import { Copy, FilePlus2, FolderOpen, Pencil, Trash2 } from "lucide-react";
+
+function displayContractNo(item: SavedContract): string {
+  return (
+    normalizeContractNo(item.inputs.contract_no, item.inputs.contract_date) ||
+    "ไม่มีเลขที่สัญญา"
+  );
+}
 
 export function ContractLibrary({
   items,
@@ -68,7 +76,7 @@ export function ContractLibrary({
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <p className="font-semibold text-teal-950">
-                    {item.inputs.contract_no || "ไม่มีเลขที่สัญญา"}
+                    {displayContractNo(item)}
                   </p>
                   <p className="mt-0.5 truncate text-sm text-foreground">
                     {item.inputs.client_name || "ยังไม่ระบุผู้ว่าจ้าง"}

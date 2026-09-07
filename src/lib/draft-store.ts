@@ -47,8 +47,10 @@ function readStorage(): Omit<DraftSnapshot, "hydrated"> {
     }
     const parsed = JSON.parse(raw) as Partial<ContractInputs>;
     // Only fill missing keys — keep intentional empty strings.
+    // Upgrade legacy SC-YYYY-NNN → SC-YYYY-MM-NNN when loading.
+    const inputs = emptyInputs({ ...parsed });
     return {
-      inputs: emptyInputs({ ...parsed }),
+      inputs,
       activeId: activeId || null,
       storageError: null,
     };

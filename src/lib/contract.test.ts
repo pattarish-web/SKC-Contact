@@ -3,6 +3,7 @@ import {
   buildContractContext,
   emptyInputs,
   missingRequiredFields,
+  normalizeContractNo,
   normalizeStaffRoles,
 } from "./contract";
 import {
@@ -34,8 +35,12 @@ assert.equal(endDateFromStart("2026-01-01", 1), "2026-01-31");
 assert.equal(monthsFromRange("2026-10-01", "2027-09-30"), 12);
 assert.equal(monthsFromRange("2026-10-01", "2026-09-01"), null);
 
+assert.equal(normalizeContractNo("SC-2569-003", "2026-09-07"), "SC-2569-09-003");
+assert.equal(normalizeContractNo("SC-2569-09-001", "2026-09-07"), "SC-2569-09-001");
+assert.equal(normalizeContractNo("SC-2569-12", "2026-03-01"), "SC-2569-03-012");
+
 const sample = emptyInputs({
-  contract_no: "SC-2569-09-001",
+  contract_no: "SC-2569-003",
   contract_date: "2026-09-07",
   client_name: "บริษัท ตัวอย่าง พลาซ่า จำกัด",
   client_address: "กรุงเทพฯ",
@@ -52,6 +57,7 @@ const sample = emptyInputs({
     },
   ],
 });
+assert.equal(sample.contract_no, "SC-2569-09-003");
 
 const ctx = buildContractContext(sample);
 assert.equal(ctx.staff_count, 2);

@@ -342,7 +342,7 @@ function parseNumber(value: string): number {
 export function emptyInputs(partial: Partial<ContractInputs> = {}): ContractInputs {
   const { consumables, staff_roles, staff_count, price_per_head, ...rest } =
     partial;
-  return {
+  const base = {
     contract_no: "",
     contract_date: "",
     client_name: "",
@@ -369,6 +369,10 @@ export function emptyInputs(partial: Partial<ContractInputs> = {}): ContractInpu
       staff_count,
       price_per_head,
     }),
+  };
+  return {
+    ...base,
+    contract_no: normalizeContractNo(base.contract_no, base.contract_date),
   };
 }
 
@@ -590,6 +594,67 @@ function formatContractNo(year: number, month: number, seq: number): string {
   return `SC-${year}-${String(month).padStart(2, "0")}-${String(seq).padStart(3, "0")}`;
 }
 
+function monthFromDateISO(dateISO?: string): number {
+  if (dateISO) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateISO);
+    if (match) return Number(match[2]);
+  }
+  return currentYearMonth().month;
+}
+
+function yearFromDateISO(dateISO?: string): number {
+  if (dateISO) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateISO);
+    if (match) return Number(match[1]) + 543;
+  }
+  return currentYearMonth().year;
+}
+
+/** Modern format: SC-2569-09-001 */
+export function isModernContractNo(value: string): boolean {
+  return /^SC-\d{4}-\d{2}-\d{3}$/.test(value.trim());
+}
+
+function syncSeqFromContractNo(value: string) {
+  const match = /^SC-(\d{4})-(\d{2})-(\d+)$/.exec(value.trim());
+  if (!match) return;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const seq = Number(match[3]);
+  const current = currentYearMonth();
+  if (year !== current.year || month !== current.month) return;
+  const state = readSeqState();
+  if (seq > state.seq) {
+    writeSeqState({ year, month, seq });
+  }
+}
+
+/**
+ * Upgrade legacy SC-YYYY-NNN → SC-YYYY-MM-NNN using contract/create month.
+ * Leaves modern numbers unchanged.
+ */
+export function normalizeContractNo(
+  value: string,
+  dateISO?: string
+): string {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  if (isModernContractNo(trimmed)) {
+    syncSeqFromContractNo(trimmed);
+    return trimmed;
+  }
+  const legacy = /^SC-(\d{4})-(\d{1,3})$/.exec(trimmed);
+  if (legacy) {
+    const year = Number(legacy[1]);
+    const seq = Number(legacy[2]);
+    const month = monthFromDateISO(dateISO);
+    const next = formatContractNo(year, month, seq);
+    syncSeqFromContractNo(next);
+    return next;
+  }
+  return trimmed;
+}
+
 export function nextContractNo(existing?: string): string {
   const state = readSeqState();
   let seq = state.seq;
@@ -601,7 +666,7 @@ export function nextContractNo(existing?: string): string {
   ) {
     seq = Math.max(seq, Number(match[3]));
   }
-  // Also tolerate old SC-YYYY-NNN format within the same year.
+  // Old SC-YYYY-NNN (no month) within the same Buddhist year.
   const legacy = existing?.match(/^SC-(\d{4})-(\d+)$/);
   if (legacy && Number(legacy[1]) === state.year && !match) {
     seq = Math.max(seq, Number(legacy[2]));
@@ -611,7 +676,23 @@ export function nextContractNo(existing?: string): string {
   return formatContractNo(state.year, state.month, seq);
 }
 
-export function peekNextContractNo(): string {
+export function peekNextContractNo(dateISO?: string): string {
   const state = readSeqState();
-  return formatContractNo(state.year, state.month, state.seq + 1);
+  const year = dateISO ? yearFromDateISO(dateISO) : state.year;
+  const month = dateISO ? monthFromDateISO(dateISO) : state.month;
+  const seq =
+    year === state.year && month === state.month ? state.seq + 1 : 1;
+  return formatContractNo(year, month, seq);
+}
+
+export function allocateContractNo(dateISO?: string): string {
+  const current = currentYearMonth();
+  const year = dateISO ? yearFromDateISO(dateISO) : current.year;
+  const month = dateISO ? monthFromDateISO(dateISO) : current.month;
+  if (year === current.year && month === current.month) {
+    return nextContractNo();
+  }
+  // Different month/year than "now": start/continue from stored if matching, else 1.
+  // For simplicity allocate from current month clock when creating fresh numbers.
+  return nextContractNo();
 }
