@@ -9,7 +9,9 @@ import { COMPANY } from "@/lib/company";
 import {
   buildContractContext,
   buildSampleInputs,
+  emptyInputs,
   missingRequiredFields,
+  nextContractNo,
   type ContractInputs,
 } from "@/lib/contract";
 import {
@@ -27,7 +29,7 @@ import {
   writePrintPayload,
 } from "@/lib/draft-store";
 import { appPath } from "@/lib/paths";
-import { endDateFromStart, monthsFromRange } from "@/lib/thai";
+import { endDateFromStart, monthsFromRange, todayISO } from "@/lib/thai";
 import {
   ArrowLeft,
   FileText,
@@ -38,6 +40,29 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
+function buildRenewalInputs(source: ContractInputs): ContractInputs {
+  const today = todayISO();
+  const months = Number(source.contract_months) || 12;
+  const start = source.end_date
+    ? (() => {
+        const d = new Date(`${source.end_date}T00:00:00`);
+        d.setDate(d.getDate() + 1);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      })()
+    : today;
+  return emptyInputs({
+    ...source,
+    contract_no: nextContractNo(),
+    contract_date: today,
+    start_date: start,
+    end_date: endDateFromStart(start, months),
+    contract_months: String(months),
+  });
+}
 
 type MobilePane = "form" | "preview";
 type View = "library" | "editor";
@@ -200,6 +225,22 @@ export function ContractApp() {
     await refreshLibrary();
   }
 
+  async function duplicateSaved(id: string) {
+    const row = await getContract(id);
+    if (!row) {
+      window.alert("ไม่พบสัญญา");
+      await refreshLibrary();
+      return;
+    }
+    const renewal = buildRenewalInputs(row.inputs);
+    loadContractIntoDraft(null, renewal);
+    setView("editor");
+    setPane("form");
+    setSaveMessage(
+      `คัดลอกจาก ${row.inputs.contract_no || "สัญญาเดิม"} · ได้เลขที่ใหม่แล้ว ตรวจวันที่แล้วกดบันทึก`
+    );
+  }
+
   function startNew() {
     clearDraft();
     setView("editor");
@@ -277,6 +318,7 @@ export function ContractApp() {
           error={libraryError}
           onNew={startNew}
           onOpen={(id) => void openSaved(id)}
+          onDuplicate={(id) => void duplicateSaved(id)}
           onDelete={(id) => void removeSaved(id)}
         />
       ) : (

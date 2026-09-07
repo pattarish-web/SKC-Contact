@@ -140,7 +140,10 @@ export function clearDraft() {
   });
 }
 
-export function loadContractIntoDraft(id: string, inputs: ContractInputs) {
+export function loadContractIntoDraft(
+  id: string | null,
+  inputs: ContractInputs
+) {
   persist({
     inputs: emptyInputs({ ...inputs }),
     activeId: id,

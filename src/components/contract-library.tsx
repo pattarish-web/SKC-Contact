@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import type { SavedContract } from "@/lib/contracts-db";
 import { formatThaiDate } from "@/lib/thai";
-import { FilePlus2, FolderOpen, Pencil, Trash2 } from "lucide-react";
+import { Copy, FilePlus2, FolderOpen, Pencil, Trash2 } from "lucide-react";
 
 export function ContractLibrary({
   items,
@@ -11,6 +11,7 @@ export function ContractLibrary({
   error,
   onNew,
   onOpen,
+  onDuplicate,
   onDelete,
 }: {
   items: SavedContract[];
@@ -18,6 +19,7 @@ export function ContractLibrary({
   error: string | null;
   onNew: () => void;
   onOpen: (id: string) => void;
+  onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
   return (
@@ -79,7 +81,7 @@ export function ContractLibrary({
                     {new Date(item.updatedAt).toLocaleString("th-TH")}
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -87,6 +89,15 @@ export function ContractLibrary({
                   >
                     <Pencil data-icon="inline-start" />
                     เปิดแก้ไข
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onDuplicate(item.id)}
+                    title="คัดลอกเพื่อต่อสัญญา"
+                  >
+                    <Copy data-icon="inline-start" />
+                    คัดลอกต่อสัญญา
                   </Button>
                   <Button
                     variant="destructive"
