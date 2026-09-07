@@ -27,8 +27,34 @@ export default function PrintPage() {
 
   useEffect(() => {
     if (state.status !== "ready") return;
-    const id = window.setTimeout(() => printClean(), 350);
-    return () => window.clearTimeout(id);
+    let cancelled = false;
+
+    const waitForLayout = async () => {
+      try {
+        await document.fonts.ready;
+      } catch {
+        /* ignore */
+      }
+      const deadline = Date.now() + 8000;
+      while (!cancelled && Date.now() < deadline) {
+        const ready =
+          document.querySelectorAll('[data-paged-article="ready"]').length >= 3;
+        if (ready) {
+          await new Promise<void>((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+          });
+          return;
+        }
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      }
+    };
+
+    void waitForLayout().then(() => {
+      if (!cancelled) printClean();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [state]);
 
   if (state.status === "loading") {

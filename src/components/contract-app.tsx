@@ -730,7 +730,7 @@ export function ContractApp() {
                 ตัวอย่างสัญญา
               </h2>
               <p className="text-xs text-muted-foreground">
-                3 หน้า · A4 · กดพิมพ์จะเปิดหน้าสัญญาใหม่
+                A4 · ล้นแล้วขึ้นแผ่นใหม่ พร้อมโลโก้และหัวกระดาษ
               </p>
             </div>
             <div className="preview-frame overflow-auto rounded-2xl border border-border bg-neutral-200/70 p-3 sm:p-6">
