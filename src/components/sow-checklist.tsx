@@ -5,7 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatSowChecklist, parseSowChecklist } from "@/lib/contract";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 export function SowChecklist({
   label,
@@ -25,12 +25,12 @@ export function SowChecklist({
     [value, options]
   );
   const selected = new Set(parsed.selected);
-  const [extraDraft, setExtraDraft] = useState<string | null>(null);
-  const extra = extraDraft ?? parsed.extra;
-
-  useEffect(() => {
-    setExtraDraft(null);
-  }, [value]);
+  const [extraDraft, setExtraDraft] = useState<{
+    value: string;
+    text: string;
+  } | null>(null);
+  const extra =
+    extraDraft && extraDraft.value === value ? extraDraft.text : parsed.extra;
 
   function commit(nextSelected: string[], nextExtra: string) {
     setExtraDraft(null);
@@ -102,7 +102,7 @@ export function SowChecklist({
         <Input
           id={`${label}-extra`}
           value={extra}
-          onChange={(e) => setExtraDraft(e.target.value)}
+          onChange={(e) => setExtraDraft({ value, text: e.target.value })}
           onBlur={() => commit(parsed.selected, extra)}
           placeholder="พิมพ์รายการเพิ่ม แล้วคลิกออกนอกช่องเพื่อบันทึก"
         />

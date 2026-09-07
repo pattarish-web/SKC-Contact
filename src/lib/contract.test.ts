@@ -22,6 +22,7 @@ import {
   bahtText,
   endDateFromStart,
   formatThaiDate,
+  formatUpdatedAt,
   monthsFromRange,
   num2wordsTh,
   round2,
@@ -40,6 +41,9 @@ assert.equal(bahtText(15000.99), "หนึ่งหมื่นห้าพั�
 assert.equal(round2(25200.840000000004), 25200.84);
 
 assert.equal(formatThaiDate("2026-09-07"), "7 กันยายน 2569");
+assert.equal(formatUpdatedAt(0), "—");
+assert.equal(formatUpdatedAt(undefined), "—");
+assert.match(formatUpdatedAt(Date.UTC(2026, 8, 7, 10, 0, 0)), /2569|2026/);
 assert.equal(endDateFromStart("2026-10-01", 12), "2027-09-30");
 assert.equal(endDateFromStart("2026-01-31", 1), "2026-02-27");
 assert.equal(endDateFromStart("2024-01-31", 1), "2024-02-28");

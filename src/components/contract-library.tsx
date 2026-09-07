@@ -3,18 +3,18 @@
 import { Button } from "@/components/ui/button";
 import type { SavedContract } from "@/lib/contracts-db";
 import { normalizeContractNo } from "@/lib/contract";
-import { formatThaiDate } from "@/lib/thai";
+import { formatThaiDate, formatUpdatedAt } from "@/lib/thai";
 import {
   Copy,
   Download,
   Eye,
   FilePlus2,
   FolderOpen,
-  FolderSync,
   Pencil,
-  RefreshCw,
+  Radio,
   Trash2,
   Upload,
+  WifiOff,
 } from "lucide-react";
 import { useRef } from "react";
 
@@ -29,79 +29,61 @@ export function ContractLibrary({
   items,
   loading,
   error,
-  syncHint,
-  folderReady,
-  folderSupported,
+  liveHint,
+  liveConnected,
   onNew,
   onOpen,
   onDuplicate,
   onDelete,
   onExportFile,
   onImportFile,
-  onSyncNow,
-  onPickFolder,
   onReview,
 }: {
   items: SavedContract[];
   loading: boolean;
   error: string | null;
-  syncHint?: string | null;
-  folderReady?: boolean;
-  folderSupported?: boolean;
+  liveHint?: string | null;
+  liveConnected?: boolean;
   onNew: () => void;
   onOpen: (id: string) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
   onExportFile: () => void;
   onImportFile: (file: File) => void;
-  onSyncNow: () => void;
-  onPickFolder: () => void;
   onReview: (id: string) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="mx-auto max-w-4xl space-y-4 px-4 py-6 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-teal-950">คลังสัญญา</h1>
+          <h1 className="text-lg font-semibold text-teal-950">คลังกลาง</h1>
           <p className="text-sm text-muted-foreground">
-            มี {items.length} สัญญาในเครื่องนี้
-            {folderReady
-              ? " · ใช้โฟลเดอร์ร่วมแล้ว (แนะนำ)"
-              : " · แนะนำให้เลือกโฟลเดอร์ OneDrive/ไดรฟ์ร่วมเพื่อไม่ให้ข้อมูลหาย"}
+            มี {items.length} สัญญาในฐานกลาง · ทุกเครื่องเห็นชุดเดียวกันทันที
           </p>
-          {syncHint ? (
-            <p className="mt-1 text-xs font-medium text-teal-800">{syncHint}</p>
-          ) : null}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {folderSupported ? (
-            <Button
-              type="button"
-              size="sm"
-              variant={folderReady ? "outline" : "default"}
-              onClick={onPickFolder}
-              title="เลือกโฟลเดอร์ OneDrive / Google Drive / ไดรฟ์บริษัท ที่ทั้งสองเครื่องเข้าถึงได้"
-            >
-              <FolderSync data-icon="inline-start" />
-              {folderReady ? "เปลี่ยนโฟลเดอร์ร่วม" : "เลือกโฟลเดอร์ร่วม"}
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={onSyncNow}
-            title="ดึง/อัปโหลดคลังให้ตรงกัน"
+          <p
+            className={`mt-1 flex items-center gap-1 text-xs font-medium ${
+              liveConnected ? "text-teal-800" : "text-amber-800"
+            }`}
           >
-            <RefreshCw data-icon="inline-start" />
-            ซิงก์คลัง
-          </Button>
+            {liveConnected ? (
+              <Radio className="size-3.5" />
+            ) : (
+              <WifiOff className="size-3.5" />
+            )}
+            {liveHint ||
+              (liveConnected
+                ? "เชื่อมคลังกลางแล้ว"
+                : "กำลังต่อคลังกลาง…")}
+          </p>
+        </div>
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
           <Button
             type="button"
             size="sm"
             variant="outline"
+            className="h-11 w-full justify-center sm:h-7 sm:w-auto"
             onClick={onExportFile}
             title="สำรองคลังเป็นไฟล์"
           >
@@ -112,6 +94,7 @@ export function ContractLibrary({
             type="button"
             size="sm"
             variant="outline"
+            className="h-11 w-full justify-center sm:h-7 sm:w-auto"
             onClick={() => fileRef.current?.click()}
             title="นำเข้าจากไฟล์สำรอง"
           >
@@ -129,7 +112,7 @@ export function ContractLibrary({
               e.target.value = "";
             }}
           />
-          <Button onClick={onNew}>
+          <Button className="hidden sm:inline-flex" onClick={onNew}>
             <FilePlus2 data-icon="inline-start" />
             สร้างสัญญาใหม่
           </Button>
@@ -178,14 +161,14 @@ export function ContractLibrary({
                     {formatThaiDate(item.inputs.start_date) || "—"} ถึง{" "}
                     {formatThaiDate(item.inputs.end_date) || "—"}
                     {" · "}
-                    แก้ไขล่าสุด{" "}
-                    {new Date(item.updatedAt).toLocaleString("th-TH")}
+                    แก้ไขล่าสุด {formatUpdatedAt(item.updatedAt)}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                   <Button
                     size="sm"
                     variant="outline"
+                    className="h-11 justify-center sm:h-7"
                     onClick={() => onReview(item.id)}
                     title="รีวิวสัญญาและไฟล์แนบ"
                   >
@@ -194,6 +177,7 @@ export function ContractLibrary({
                   </Button>
                   <Button
                     size="sm"
+                    className="h-11 justify-center sm:h-7"
                     onClick={() => onDuplicate(item.id)}
                     title="คัดลอกข้อมูลลูกค้าและออกเลขที่ใหม่เพื่อต่อสัญญา"
                   >
@@ -203,6 +187,7 @@ export function ContractLibrary({
                   <Button
                     variant="outline"
                     size="sm"
+                    className="h-11 justify-center sm:h-7"
                     onClick={() => onOpen(item.id)}
                   >
                     <Pencil data-icon="inline-start" />
@@ -211,6 +196,7 @@ export function ContractLibrary({
                   <Button
                     size="sm"
                     variant="destructive"
+                    className="h-11 justify-center sm:h-7"
                     onClick={() => onDelete(item.id)}
                   >
                     <Trash2 data-icon="inline-start" />

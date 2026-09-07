@@ -859,36 +859,6 @@ function currentYearMonth(): { year: number; month: number } {
   };
 }
 
-function readSeqState(): SeqState {
-  const current = currentYearMonth();
-  if (typeof window === "undefined") {
-    return { ...current, seq: 0 };
-  }
-  try {
-    const raw = window.localStorage.getItem(CONTRACT_SEQ_KEY);
-    if (!raw) return { ...current, seq: 0 };
-    const parsed = JSON.parse(raw) as {
-      year?: number;
-      month?: number;
-      seq?: number;
-    };
-    if (
-      parsed.year === current.year &&
-      parsed.month === current.month &&
-      typeof parsed.seq === "number"
-    ) {
-      return {
-        year: current.year,
-        month: current.month,
-        seq: parsed.seq,
-      };
-    }
-    return { ...current, seq: 0 };
-  } catch {
-    return { ...current, seq: 0 };
-  }
-}
-
 function writeSeqState(state: SeqState) {
   if (typeof window === "undefined") return;
   try {
