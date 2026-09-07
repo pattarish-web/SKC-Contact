@@ -656,7 +656,7 @@ export function emptyInputs(partial: Partial<ContractInputs> = {}): ContractInpu
     sow_electrical: "",
     sow_shared_materials: "",
     sow_equipment: "",
-    contractor_authorized: "",
+    contractor_authorized: "นาย ภัทริศวร์ สกุลศิริภิรมย์",
     contractor_position: "กรรมการผู้มีอำนาจ",
     witness_client: "",
     witness_contractor: "",
