@@ -22,7 +22,7 @@ import {
 } from "@/lib/presets-store";
 import { cn } from "cn";
 import { Plus, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 function MiniChip({
   active,
@@ -124,6 +124,7 @@ function SizeQtyEditor({
   sizePlaceholder,
   qtyPlaceholder,
   qtyLabel,
+  qtyUnitHint,
   onSizeChange,
   onQtyChange,
   onAddSize,
@@ -140,6 +141,7 @@ function SizeQtyEditor({
   sizePlaceholder: string;
   qtyPlaceholder: string;
   qtyLabel: string;
+  qtyUnitHint: string;
   onSizeChange: (value: string) => void;
   onQtyChange: (value: string) => void;
   onAddSize: () => void;
@@ -147,10 +149,20 @@ function SizeQtyEditor({
   onAddQty: () => void;
   onRemoveQty: (value: string) => void;
 }) {
+  const qtyRef = useRef<HTMLInputElement>(null);
   const canAddSize =
     size.trim().length > 0 && !sizeOptions.includes(size.trim());
   const canAddQty =
+    quantity.trim().length > 0 &&
+    quantity.trim() !== "กำหนดเอง" &&
+    !qtyOptions.includes(quantity.trim());
+  const isCustomQty =
     quantity.trim().length > 0 && !qtyOptions.includes(quantity.trim());
+
+  function startCustomQty() {
+    if (!isCustomQty) onQtyChange("");
+    window.setTimeout(() => qtyRef.current?.focus(), 0);
+  }
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -195,6 +207,7 @@ function SizeQtyEditor({
         <Label>{qtyLabel}</Label>
         <div className="flex gap-2">
           <Input
+            ref={qtyRef}
             value={quantity}
             onChange={(e) => onQtyChange(e.target.value)}
             placeholder={qtyPlaceholder}
@@ -211,6 +224,7 @@ function SizeQtyEditor({
             เพิ่ม
           </Button>
         </div>
+        <p className="text-[11px] text-muted-foreground">{qtyUnitHint}</p>
         <div className="flex flex-wrap gap-1">
           {qtyOptions.map((option) => (
             <MiniChip
@@ -226,6 +240,9 @@ function SizeQtyEditor({
               {option}
             </MiniChip>
           ))}
+          <MiniChip active={isCustomQty} onClick={startCustomQty}>
+            กำหนดเอง
+          </MiniChip>
         </div>
       </div>
     </div>
@@ -380,9 +397,9 @@ export function ConsumablesPanel({
           ถุงขยะ / กระดาษชำระ และวัสดุแยก
         </h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          ถุงขยะใส่ได้หลายขนาดในสัญญาเดียว — พิมพ์ขนาดเองแล้วกด “เพิ่ม”
-          เพื่อเก็บเป็นตัวเลือกถาวร จำนวนคิดเป็นต่อเดือน (หรือข้อความเช่น
-          ตามความเหมาะสม)
+          ถุงขยะใส่ได้หลายขนาดในสัญญาเดียว — จำนวนคิดเป็นต่อเดือน
+          (เช่น 20 ใบ/เดือน) หรือกด “กำหนดเอง” เพื่อพิมพ์ข้อความเอง
+          แล้วกด “เพิ่ม” เพื่อเก็บเป็นตัวเลือกถาวร
         </p>
       </div>
 
@@ -486,6 +503,7 @@ export function ConsumablesPanel({
                       sizePlaceholder="เช่น 30x40 นิ้ว หรือ 40x60 ซม."
                       qtyPlaceholder="เช่น 20 ใบ/เดือน"
                       qtyLabel="จำนวน (ต่อเดือน)"
+                      qtyUnitHint="หน่วยแนะนำ: ใบ/เดือน หรือ ม้วน/เดือน — หรือพิมพ์กำหนดเอง"
                       onSizeChange={(value) =>
                         patchVariant(item.id, variant.id, { size: value })
                       }
@@ -529,6 +547,11 @@ export function ConsumablesPanel({
                     : "เช่น ตามความเหมาะสม"
                 }
                 qtyLabel="จำนวน (ต่อเดือน)"
+                qtyUnitHint={
+                  isToiletPaper(item)
+                    ? "หน่วยแนะนำ: แพ็ค/เดือน หรือ ม้วน/เดือน — หรือพิมพ์กำหนดเอง"
+                    : "หน่วยแนะนำตามชนิดวัสดุ — หรือพิมพ์กำหนดเอง"
+                }
                 onSizeChange={(value) => patch(item.id, { size: value })}
                 onQtyChange={(value) => patch(item.id, { quantity: value })}
                 onAddSize={() => sizeOpts.add(item.size)}

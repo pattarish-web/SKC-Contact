@@ -144,7 +144,6 @@ export const TRASH_BAG_QTY_PRESETS = [
   "20 ใบ/เดือน",
   "50 ใบ/เดือน",
   "100 ใบ/เดือน",
-  "1 ม้วน/เดือน",
   "2 ม้วน/เดือน",
 ] as const;
 
@@ -153,8 +152,8 @@ export const TOILET_PAPER_QTY_PRESETS = [
   "1 แพ็ค/เดือน",
   "2 แพ็ค/เดือน",
   "4 แพ็ค/เดือน",
-  "1 ม้วน/วัน",
-  "2 ม้วน/วัน",
+  "10 ม้วน/เดือน",
+  "20 ม้วน/เดือน",
 ] as const;
 
 export const TRASH_BAG_SIZE_PRESETS = [
@@ -272,13 +271,17 @@ export function formatConsumableLine(item: ConsumableSpec): string {
   if (!item.enabled) {
     return `ไม่รวม${name} (ผู้ว่าจ้างจัดหาเอง)`;
   }
-  const variants = item.variants.filter((v) => v.size.trim() || v.quantity.trim());
+  const variants = (item.variants || []).filter(
+    (v) => v.size.trim() || v.quantity.trim()
+  );
   if (variants.length > 0) {
     const details = variants
       .map((v) => {
         const parts: string[] = [];
         if (v.size.trim()) parts.push(`ขนาด ${v.size.trim()}`);
-        if (v.quantity.trim()) parts.push(`จำนวน ${v.quantity.trim()}`);
+        if (v.quantity.trim()) {
+          parts.push(`จำนวน ${formatQuantityPhrase(v.quantity.trim())}`);
+        }
         return parts.join(" ");
       })
       .filter(Boolean)
@@ -289,8 +292,18 @@ export function formatConsumableLine(item: ConsumableSpec): string {
   }
   const parts = [`ผู้รับจ้างจัดหา${name}`];
   if (item.size.trim()) parts.push(`ขนาด ${item.size.trim()}`);
-  if (item.quantity.trim()) parts.push(`จำนวน ${item.quantity.trim()}`);
+  if (item.quantity.trim()) {
+    parts.push(`จำนวน ${formatQuantityPhrase(item.quantity.trim())}`);
+  }
   return parts.join(" ");
+}
+
+/** If user typed a bare number, treat it as per-month. */
+function formatQuantityPhrase(quantity: string): string {
+  if (/^\d+([.,]\d+)?$/.test(quantity)) {
+    return `${quantity} ต่อเดือน`;
+  }
+  return quantity;
 }
 
 export function buildConsumableLines(items: ConsumableSpec[]): string[] {
