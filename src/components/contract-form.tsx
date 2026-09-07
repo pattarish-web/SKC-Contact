@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ContractContext, ContractInputs } from "@/lib/contract";
 import {
+  CONTRACTOR_SIGNATORY_PRESETS,
   DEFAULT_SOW_ELECTRICAL,
   DEFAULT_SOW_SHARED_MATERIALS,
   DEFAULT_SOW_TOOLS,
@@ -386,17 +387,16 @@ export function ContractForm({
         <h2 className="text-sm font-semibold tracking-wide text-teal-800">
           ผู้ลงนามฝ่ายผู้รับจ้าง (ไม่บังคับ)
         </h2>
-        <Field
+        <PresetField
           label="ชื่อผู้ลงนาม สั่งการ คลีน"
           htmlFor="contractor_authorized"
-          hint="เว้นว่างได้ หากจะลงลายมือชื่อในเอกสารทีหลัง"
-        >
-          <Input
-            id="contractor_authorized"
-            value={inputs.contractor_authorized}
-            onChange={(e) => onChange("contractor_authorized", e.target.value)}
-          />
-        </Field>
+          value={inputs.contractor_authorized}
+          onChange={(value) => onChange("contractor_authorized", value)}
+          builtins={CONTRACTOR_SIGNATORY_PRESETS}
+          group="contractor_signatory"
+          placeholder="เลือกหรือพิมพ์ชื่อผู้ลงนาม"
+          hint="เลือกจาก 2 คนด้านล่าง หรือเว้นว่างหากจะลงลายมือชื่อทีหลัง"
+        />
         <div className="space-y-2">
           <PresetField
             label="ตำแหน่งผู้ลงนามฝ่ายผู้รับจ้าง"

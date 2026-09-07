@@ -6,6 +6,7 @@ export type PresetGroup =
   | "work_days"
   | "work_hours"
   | "client_position"
+  | "contractor_signatory"
   | "trash_bag_size"
   | "toilet_paper_size"
   | "chemical_size"
@@ -19,6 +20,7 @@ const EMPTY: CustomPresets = {
   work_days: [],
   work_hours: [],
   client_position: [],
+  contractor_signatory: [],
   trash_bag_size: [],
   toilet_paper_size: [],
   chemical_size: [],
@@ -43,6 +45,7 @@ function readAll(): CustomPresets {
       work_days: asList(parsed.work_days),
       work_hours: asList(parsed.work_hours),
       client_position: asList(parsed.client_position),
+      contractor_signatory: asList(parsed.contractor_signatory),
       trash_bag_size: asList(parsed.trash_bag_size),
       toilet_paper_size: asList(parsed.toilet_paper_size),
       chemical_size: asList(parsed.chemical_size),

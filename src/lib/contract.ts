@@ -129,6 +129,11 @@ export const POSITION_PRESETS = [
   "เจ้าของกิจการ",
 ] as const;
 
+export const CONTRACTOR_SIGNATORY_PRESETS = [
+  "นาย ภัทริศวร์ สกุลศิริภิรมย์",
+  "น.ส.ธิดาพร กลั่นแตง",
+] as const;
+
 export const STAFF_ROLE_PRESETS = [
   "พนักงานรักษาความสะอาด",
   "หัวหน้าพนักงาน",
@@ -710,7 +715,7 @@ export function buildSampleInputs(contractNo?: string): ContractInputs {
     sow_tools: DEFAULT_SOW_TOOLS,
     sow_electrical: DEFAULT_SOW_ELECTRICAL,
     sow_shared_materials: DEFAULT_SOW_SHARED_MATERIALS,
-    contractor_authorized: "ตัวอย่าง ผู้รับจ้าง",
+    contractor_authorized: "นาย ภัทริศวร์ สกุลศิริภิรมย์",
     contractor_position: "ผู้จัดการ",
   });
 }
