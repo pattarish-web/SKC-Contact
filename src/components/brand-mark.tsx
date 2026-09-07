@@ -1,26 +1,34 @@
+import { withBasePath } from "@/lib/paths";
 import { cn } from "cn";
 
-export function BrandMark({ className }: { className?: string }) {
+const LOGO_SRC = withBasePath("/logo-sangkan-clean.png");
+
+type BrandMarkProps = {
+  className?: string;
+  /** compact = app chrome; contract = document header on every page */
+  variant?: "compact" | "contract";
+};
+
+export function BrandMark({
+  className,
+  variant = "compact",
+}: BrandMarkProps) {
+  const isContract = variant === "contract";
+
   return (
-    <svg
-      viewBox="0 0 48 48"
-      className={cn("shrink-0", className)}
-      aria-hidden
-    >
-      <rect width="48" height="48" rx="14" fill="#0f766e" />
-      <path
-        d="M14 32.5c6.2-1.4 10.4-5.2 13.2-10.2 1.6 3.4 4.4 5.8 8.3 6.6"
-        fill="none"
-        stroke="#ecfdf5"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-      />
-      <path
-        d="M16 22h3.2l1.1-3.2L21.4 22H24l-2.2 1.6.8 2.6L20.3 24.6 18 26.2l.8-2.6L16 22Z"
-        fill="#99f6e4"
-      />
-      <circle cx="33.5" cy="16.5" r="1.6" fill="#fefce8" />
-      <circle cx="28" cy="14" r="1.1" fill="#fefce8" />
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element -- static export + print-friendly
+    <img
+      src={LOGO_SRC}
+      alt="Sangkan Clean"
+      width={1026}
+      height={173}
+      className={cn(
+        "shrink-0 object-contain object-left",
+        isContract
+          ? "h-10 w-auto max-w-[11.5rem] sm:h-11 sm:max-w-[13rem] print:h-9 print:max-w-[11rem]"
+          : "h-8 w-auto max-w-[9.5rem] sm:h-9 sm:max-w-[11rem]",
+        className
+      )}
+    />
   );
 }

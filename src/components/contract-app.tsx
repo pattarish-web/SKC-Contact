@@ -268,7 +268,7 @@ export function ContractApp() {
     <div className="min-h-full bg-[oklch(0.97_0.01_175)]">
       <header className="no-print sticky top-0 z-20 border-b border-teal-900/10 bg-[oklch(0.99_0.01_175)]/90 backdrop-blur">
         <div className="mx-auto flex max-w-[1600px] items-center gap-3 px-4 py-3 sm:px-6">
-          <BrandMark className="size-10" />
+          <BrandMark />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-teal-950 sm:text-base">
               {COMPANY.shortName}

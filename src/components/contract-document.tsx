@@ -117,8 +117,8 @@ function ContractHeader({
   return (
     <header className="border-b-2 border-teal-800 pb-3">
       <div className="flex items-start gap-3">
-        <BrandMark className="size-11 print:size-10" />
-        <div className="min-w-0 flex-1 text-center sm:pr-11">
+        <BrandMark variant="contract" className="mt-0.5" />
+        <div className="min-w-0 flex-1 text-center">
           <p className="text-[11px] tracking-wide text-teal-800">
             {COMPANY.name}
           </p>
@@ -129,6 +129,11 @@ function ContractHeader({
             <p className="mt-1 text-[13px] text-neutral-700">{subtitle}</p>
           ) : null}
         </div>
+        {/* spacer so title stays centered opposite the logo */}
+        <div
+          aria-hidden
+          className="invisible hidden h-10 w-[11.5rem] shrink-0 sm:block sm:h-11 sm:w-[13rem] print:block print:h-9 print:w-[11rem]"
+        />
       </div>
     </header>
   );

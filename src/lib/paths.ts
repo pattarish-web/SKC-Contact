@@ -7,3 +7,10 @@ export function appPath(path = "/"): string {
   const withSlash = normalized.endsWith("/") ? normalized : `${normalized}/`;
   return `${base}${withSlash}`;
 }
+
+/** Static asset path (file) that respects GitHub Pages basePath. */
+export function withBasePath(path: string): string {
+  const base = (process.env.NEXT_PUBLIC_BASE_PATH || "").replace(/\/$/, "");
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${normalized}`;
+}
