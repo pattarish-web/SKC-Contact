@@ -1,36 +1,48 @@
-# สั่งการ คลีน — จัดทำสัญญา + คลังกลาง realtime
+# สั่งการ คลีน — จัดทำสัญญา + คลังกลาง Google Sheet
 
-เว็บจัดทำสัญญาจ้างทำความสะอาดของบริษัท **สั่งการ คลีน จำกัด** ใช้ฐานข้อมูลกลางบนเซิร์ฟเวอร์นี้ ทุกเครื่องที่เปิดเซิร์ฟเวอร์เดียวกันเห็นสัญญาชุดเดียวกันทันที ไม่ต้องกดซิงก์ และไม่ใช้ JSON bin สาธารณะ
+เว็บจัดทำสัญญาจ้างทำความสะอาดของบริษัท **สั่งการ คลีน จำกัด** คลังสัญญาอยู่ที่ [Google Sheet sck-contact](https://docs.google.com/spreadsheets/d/1Os1IdvKUPhuzBS0o765T3W_vnllgr_x03lfgfta2Tow/edit?usp=sharing) ไม่ใช้เซิร์ฟเวอร์ Node
 
 ## ใช้ทำอะไรได้
 
 - กรอกข้อมูลผู้ว่าจ้าง ระยะเวลา พนักงาน และอัตราค่าจ้าง
 - พิมพ์ / บันทึก PDF (A4)
-- คลังกลางบนเซิร์ฟเวอร์ — บันทึกที่เครื่องหนึ่ง อีกเครื่องขึ้นเองผ่าน SSE
+- คลังกลางใน Google Sheet — ทุกเครื่องเห็นชุดเดียวกัน
 - ส่งออก / นำเข้าไฟล์สำรองได้
+- โฮสต์บน GitHub Pages ได้
 
-## วิธีรัน
+## วิธีรันบนเครื่อง
 
-ต้องมี Node.js 18 ขึ้นไป
+ต้องมี Node.js 18 ขึ้นไปเฉพาะตอนพัฒนา
 
 ```bash
 npm install
-cp .env.example .env.local   # ถ้าต้องการเปลี่ยนรหัสคลัง
 npm test
 npm run dev
 ```
 
 เปิด [http://localhost:43141](http://localhost:43141)
 
-เปิดสองแท็บแล้วบันทึกสัญญา — อีกแท็บต้องเห็นโดยไม่รีเฟรช
+## เชื่อมชีตให้บันทึกข้ามเครื่องได้
 
-รหัสคลังเริ่มต้นคือ `skc-local` ตั้ง `LIBRARY_KEY` และ `NEXT_PUBLIC_LIBRARY_KEY` ให้ตรงกัน
+อ่านชีตได้เลย แต่การบันทึกต้องมีเว็บแอป Apps Script ครั้งเดียว:
 
-หน้าตรวจเว็บเดิมอยู่ที่ `/audit`
+1. เปิด [ชีต sck-contact](https://docs.google.com/spreadsheets/d/1Os1IdvKUPhuzBS0o765T3W_vnllgr_x03lfgfta2Tow/edit?usp=sharing)
+2. ส่วนขยาย → Apps Script
+3. วางโค้ดจาก `scripts/SheetLibrary.gs` (หรือกดคัดลอกในหน้าคลัง)
+4. Deploy → New deployment → Web app
+5. Execute as: Me · Who has access: Anyone
+6. วางลิงก์ `/exec` ในหน้าคลังของแอป
 
-ข้อมูลคลังเก็บที่ `data/library.json` (ไม่ commit)
+แอปจะสร้างแท็บ `สัญญา` และคอลัมน์เลขที่สัญญา ผู้ว่าจ้าง วันที่ และ JSON ฉบับเต็ม
 
-แอปนี้ต้องรัน Node ไม่ใช่ GitHub Pages — Pages โฮสต์ไฟล์นิ่งอย่างเดียว จึงเก็บฐานกลางไม่ได้
+## เผยแพร่ GitHub Pages
+
+```bash
+npm run build
+./scripts/deploy-pages.sh
+```
+
+เปิด [https://pattarish-web.github.io/SKC-Contact/](https://pattarish-web.github.io/SKC-Contact/)
 
 ## พิมพ์สัญญา
 

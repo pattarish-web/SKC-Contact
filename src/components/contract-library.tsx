@@ -1,5 +1,6 @@
 "use client";
 
+import { SheetSetup } from "@/components/sheet-setup";
 import { Button } from "@/components/ui/button";
 import type { SavedContract } from "@/lib/contracts-db";
 import { normalizeContractNo } from "@/lib/contract";
@@ -60,7 +61,7 @@ export function ContractLibrary({
         <div>
           <h1 className="text-lg font-semibold text-teal-950">คลังกลาง</h1>
           <p className="text-sm text-muted-foreground">
-            มี {items.length} สัญญาในฐานกลาง · ทุกเครื่องเห็นชุดเดียวกันทันที
+            มี {items.length} สัญญาใน Google Sheet · ทุกเครื่องเห็นชุดเดียวกัน
           </p>
           <p
             className={`mt-1 flex items-center gap-1 text-xs font-medium ${
@@ -124,6 +125,8 @@ export function ContractLibrary({
           {error}
         </div>
       ) : null}
+
+      <SheetSetup />
 
       {loading ? (
         <div className="rounded-xl border border-dashed border-border bg-white px-4 py-10 text-center text-sm text-muted-foreground">

@@ -29,6 +29,7 @@ import {
   ShieldX,
 } from "lucide-react";
 import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { runAudit } from "@/lib/audit";
 
 const CATEGORY_LABEL: Record<FindingCategory, string> = {
   http: "HTTP",
@@ -71,15 +72,7 @@ export function AuditDashboard({
     startTransition(async () => {
       setError(null);
       try {
-        const res = await fetch("/api/audit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ target }),
-        });
-        if (!res.ok) {
-          throw new Error(`ตัวตรวจตอบ HTTP ${res.status}`);
-        }
-        const next = (await res.json()) as AuditReport;
+        const next = await runAudit(target);
         setReport(next);
       } catch (err) {
         setError(err instanceof Error ? err.message : "ตรวจไม่สำเร็จ");
