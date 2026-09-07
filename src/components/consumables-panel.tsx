@@ -7,10 +7,12 @@ import { Label } from "@/components/ui/label";
 import {
   createConsumable,
   createConsumableVariant,
-  TOILET_PAPER_QTY_PRESETS,
-  TOILET_PAPER_SIZE_PRESETS,
-  TRASH_BAG_QTY_PRESETS,
-  TRASH_BAG_SIZE_PRESETS,
+  getConsumableKind,
+  isQtyCompatibleWithKind,
+  qtyMetaForKind,
+  qtyPresetsForKind,
+  sizePresetsForKind,
+  type ConsumableKind,
   type ConsumableSpec,
 } from "@/lib/contract";
 import {
@@ -47,7 +49,11 @@ function MiniChip({
       <button
         type="button"
         onClick={onClick}
-        className={cn("px-2 py-0.5", onRemove ? "pr-1" : "", !active && "hover:bg-muted rounded-full")}
+        className={cn(
+          "px-2 py-0.5",
+          onRemove ? "pr-1" : "",
+          !active && "hover:bg-muted rounded-full"
+        )}
       >
         {children}
       </button>
@@ -73,7 +79,8 @@ function MiniChip({
 
 function usePresetOptions(
   group: PresetGroup,
-  builtins: readonly string[]
+  builtins: readonly string[],
+  filter?: (value: string) => boolean
 ): {
   options: string[];
   customs: string[];
@@ -89,29 +96,40 @@ function usePresetOptions(
     return () => window.clearTimeout(id);
   }, [group]);
 
-  const options = useMemo(
-    () => mergePresets(builtins, customs),
-    [builtins, customs]
+  const options = useMemo(() => {
+    const merged = mergePresets(builtins, customs);
+    return filter ? merged.filter(filter) : merged;
+  }, [builtins, customs, filter]);
+
+  const visibleCustoms = useMemo(
+    () => (filter ? customs.filter(filter) : customs),
+    [customs, filter]
   );
 
   return {
     options,
-    customs,
+    customs: visibleCustoms,
     add: (value: string) => setCustoms(addCustomPreset(group, value)),
     remove: (value: string) => setCustoms(removeCustomPreset(group, value)),
   };
 }
 
-function isTrashBags(item: ConsumableSpec): boolean {
-  return item.id === "trash_bags" || item.name.includes("ถุงขยะ");
-}
-
-function isToiletPaper(item: ConsumableSpec): boolean {
-  return item.id === "toilet_paper" || item.name.includes("กระดาษ");
-}
-
 function isBuiltin(item: ConsumableSpec): boolean {
   return item.id === "trash_bags" || item.id === "toilet_paper";
+}
+
+function presetGroupsForKind(kind: ConsumableKind): {
+  size: PresetGroup;
+  qty: PresetGroup;
+} {
+  switch (kind) {
+    case "trash_bags":
+      return { size: "trash_bag_size", qty: "trash_bag_qty" };
+    case "toilet_paper":
+      return { size: "toilet_paper_size", qty: "toilet_paper_qty" };
+    default:
+      return { size: "chemical_size", qty: "chemical_qty" };
+  }
 }
 
 function SizeQtyEditor({
@@ -249,6 +267,54 @@ function SizeQtyEditor({
   );
 }
 
+function KindEditors({
+  kind,
+  size,
+  quantity,
+  onSizeChange,
+  onQtyChange,
+}: {
+  kind: ConsumableKind;
+  size: string;
+  quantity: string;
+  onSizeChange: (value: string) => void;
+  onQtyChange: (value: string) => void;
+}) {
+  const groups = presetGroupsForKind(kind);
+  const meta = qtyMetaForKind(kind);
+  const qtyFilter = useMemo(
+    () => (value: string) => isQtyCompatibleWithKind(value, kind),
+    [kind]
+  );
+  const sizes = usePresetOptions(groups.size, sizePresetsForKind(kind));
+  const qtys = usePresetOptions(
+    groups.qty,
+    qtyPresetsForKind(kind),
+    qtyFilter
+  );
+
+  return (
+    <SizeQtyEditor
+      size={size}
+      quantity={quantity}
+      sizeOptions={sizes.options}
+      sizeCustoms={sizes.customs}
+      qtyOptions={qtys.options}
+      qtyCustoms={qtys.customs}
+      sizePlaceholder={meta.sizePlaceholder}
+      qtyPlaceholder={meta.placeholder}
+      qtyLabel={meta.label}
+      qtyUnitHint={meta.hint}
+      onSizeChange={onSizeChange}
+      onQtyChange={onQtyChange}
+      onAddSize={() => sizes.add(size)}
+      onRemoveSize={sizes.remove}
+      onAddQty={() => qtys.add(quantity)}
+      onRemoveQty={qtys.remove}
+    />
+  );
+}
+
 export function ConsumablesPanel({
   items,
   onChange,
@@ -256,30 +322,21 @@ export function ConsumablesPanel({
   items: ConsumableSpec[];
   onChange: (items: ConsumableSpec[]) => void;
 }) {
-  const bagSizes = usePresetOptions("trash_bag_size", TRASH_BAG_SIZE_PRESETS);
-  const bagQtys = usePresetOptions("trash_bag_qty", TRASH_BAG_QTY_PRESETS);
-  const paperSizes = usePresetOptions(
-    "toilet_paper_size",
-    TOILET_PAPER_SIZE_PRESETS
-  );
-  const paperQtys = usePresetOptions(
-    "toilet_paper_qty",
-    TOILET_PAPER_QTY_PRESETS
-  );
-
   const bagVariantSignature = items
-    .filter((item) => isTrashBags(item))
+    .filter((item) => getConsumableKind(item) === "trash_bags")
     .map((item) => `${item.id}:${item.variants?.length ?? 0}`)
     .join("|");
 
   useEffect(() => {
     const needsMigrate = items.some(
-      (item) => isTrashBags(item) && (!item.variants || item.variants.length === 0)
+      (item) =>
+        getConsumableKind(item) === "trash_bags" &&
+        (!item.variants || item.variants.length === 0)
     );
     if (!needsMigrate) return;
 
     function migrate(item: ConsumableSpec): ConsumableSpec {
-      if (!isTrashBags(item)) return item;
+      if (getConsumableKind(item) !== "trash_bags") return item;
       if (item.variants && item.variants.length > 0) return item;
       return {
         ...item,
@@ -325,7 +382,7 @@ export function ConsumablesPanel({
   }
 
   function ensureTrashVariants(item: ConsumableSpec): ConsumableSpec {
-    if (!isTrashBags(item)) return item;
+    if (getConsumableKind(item) !== "trash_bags") return item;
     if (item.variants && item.variants.length > 0) return item;
     return {
       ...item,
@@ -397,25 +454,16 @@ export function ConsumablesPanel({
           ถุงขยะ / กระดาษชำระ และวัสดุแยก
         </h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          ถุงขยะใส่ได้หลายขนาดในสัญญาเดียว — จำนวนคิดเป็นต่อเดือน
-          (เช่น 20 ใบ/เดือน) หรือกด “กำหนดเอง” เพื่อพิมพ์ข้อความเอง
-          แล้วกด “เพิ่ม” เพื่อเก็บเป็นตัวเลือกถาวร
+          หน่วยจำนวนแยกตามชนิดวัสดุ — ถุงขยะใช้ใบ/เดือน, กระดาษชำระใช้แพ็คหรือม้วน/เดือน,
+          น้ำยาใช้ขวดหรือแกลลอน/เดือน กด “กำหนดเอง” เพื่อพิมพ์เองแล้วกด “เพิ่ม”
+          เพื่อเก็บเป็นตัวเลือกถาวร
         </p>
       </div>
 
       {items.map((rawItem) => {
         const item = ensureTrashVariants(rawItem);
-        const multiSize = isTrashBags(item);
-        const sizeOpts = isToiletPaper(item)
-          ? paperSizes
-          : isTrashBags(item)
-            ? bagSizes
-            : paperSizes;
-        const qtyOpts = isToiletPaper(item)
-          ? paperQtys
-          : isTrashBags(item)
-            ? bagQtys
-            : bagQtys;
+        const kind = getConsumableKind(item);
+        const multiSize = kind === "trash_bags";
 
         return (
           <div
@@ -428,7 +476,7 @@ export function ConsumablesPanel({
                   checked={item.enabled}
                   onCheckedChange={(checked) => {
                     const enabled = Boolean(checked);
-                    if (isTrashBags(item) && enabled) {
+                    if (kind === "trash_bags" && enabled) {
                       patch(item.id, {
                         enabled,
                         variants: ensureTrashVariants(item).variants,
@@ -493,27 +541,16 @@ export function ConsumablesPanel({
                         <Trash2 />
                       </Button>
                     </div>
-                    <SizeQtyEditor
+                    <KindEditors
+                      kind="trash_bags"
                       size={variant.size}
                       quantity={variant.quantity}
-                      sizeOptions={bagSizes.options}
-                      sizeCustoms={bagSizes.customs}
-                      qtyOptions={bagQtys.options}
-                      qtyCustoms={bagQtys.customs}
-                      sizePlaceholder="เช่น 30x40 นิ้ว หรือ 40x60 ซม."
-                      qtyPlaceholder="เช่น 20 ใบ/เดือน"
-                      qtyLabel="จำนวน (ต่อเดือน)"
-                      qtyUnitHint="หน่วยแนะนำ: ใบ/เดือน หรือ ม้วน/เดือน — หรือพิมพ์กำหนดเอง"
                       onSizeChange={(value) =>
                         patchVariant(item.id, variant.id, { size: value })
                       }
                       onQtyChange={(value) =>
                         patchVariant(item.id, variant.id, { quantity: value })
                       }
-                      onAddSize={() => bagSizes.add(variant.size)}
-                      onRemoveSize={bagSizes.remove}
-                      onAddQty={() => bagQtys.add(variant.quantity)}
-                      onRemoveQty={bagQtys.remove}
                     />
                   </div>
                 ))}
@@ -531,33 +568,12 @@ export function ConsumablesPanel({
             ) : null}
 
             {item.enabled && !multiSize ? (
-              <SizeQtyEditor
+              <KindEditors
+                kind={kind}
                 size={item.size}
                 quantity={item.quantity}
-                sizeOptions={sizeOpts.options}
-                sizeCustoms={sizeOpts.customs}
-                qtyOptions={qtyOpts.options}
-                qtyCustoms={qtyOpts.customs}
-                sizePlaceholder={
-                  isToiletPaper(item) ? "เช่น ม้วนใหญ่" : "พิมพ์ขนาดเองได้"
-                }
-                qtyPlaceholder={
-                  isToiletPaper(item)
-                    ? "เช่น 2 แพ็ค/เดือน"
-                    : "เช่น ตามความเหมาะสม"
-                }
-                qtyLabel="จำนวน (ต่อเดือน)"
-                qtyUnitHint={
-                  isToiletPaper(item)
-                    ? "หน่วยแนะนำ: แพ็ค/เดือน หรือ ม้วน/เดือน — หรือพิมพ์กำหนดเอง"
-                    : "หน่วยแนะนำตามชนิดวัสดุ — หรือพิมพ์กำหนดเอง"
-                }
                 onSizeChange={(value) => patch(item.id, { size: value })}
                 onQtyChange={(value) => patch(item.id, { quantity: value })}
-                onAddSize={() => sizeOpts.add(item.size)}
-                onRemoveSize={sizeOpts.remove}
-                onAddQty={() => qtyOpts.add(item.quantity)}
-                onRemoveQty={qtyOpts.remove}
               />
             ) : null}
           </div>

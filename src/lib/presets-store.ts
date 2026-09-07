@@ -8,8 +8,10 @@ export type PresetGroup =
   | "client_position"
   | "trash_bag_size"
   | "toilet_paper_size"
+  | "chemical_size"
   | "trash_bag_qty"
-  | "toilet_paper_qty";
+  | "toilet_paper_qty"
+  | "chemical_qty";
 
 type CustomPresets = Record<PresetGroup, string[]>;
 
@@ -19,8 +21,10 @@ const EMPTY: CustomPresets = {
   client_position: [],
   trash_bag_size: [],
   toilet_paper_size: [],
+  chemical_size: [],
   trash_bag_qty: [],
   toilet_paper_qty: [],
+  chemical_qty: [],
 };
 
 function asList(value: unknown): string[] {
@@ -41,8 +45,10 @@ function readAll(): CustomPresets {
       client_position: asList(parsed.client_position),
       trash_bag_size: asList(parsed.trash_bag_size),
       toilet_paper_size: asList(parsed.toilet_paper_size),
+      chemical_size: asList(parsed.chemical_size),
       trash_bag_qty: asList(parsed.trash_bag_qty),
       toilet_paper_qty: asList(parsed.toilet_paper_qty),
+      chemical_qty: asList(parsed.chemical_qty),
     };
   } catch {
     return { ...EMPTY };

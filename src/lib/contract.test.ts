@@ -3,6 +3,9 @@ import {
   buildContractContext,
   buildSampleInputs,
   emptyInputs,
+  formatQuantityPhrase,
+  getConsumableKind,
+  isQtyCompatibleWithKind,
   missingRequiredFields,
   normalizeContractNo,
   normalizeStaffRoles,
@@ -161,6 +164,23 @@ assert.match(
   buildContractContext(multiBags).consumable_lines[0]!,
   /30x40.*36x45/
 );
+
+assert.equal(getConsumableKind({ id: "trash_bags", name: "ถุงขยะ" }), "trash_bags");
+assert.equal(
+  getConsumableKind({ id: "toilet_paper", name: "กระดาษชำระ" }),
+  "toilet_paper"
+);
+assert.equal(
+  getConsumableKind({ id: "x", name: "น้ำยาฆ่าเชื้อ" }),
+  "chemical"
+);
+assert.equal(isQtyCompatibleWithKind("20 ใบ/เดือน", "trash_bags"), true);
+assert.equal(isQtyCompatibleWithKind("2 แพ็ค/เดือน", "toilet_paper"), true);
+assert.equal(isQtyCompatibleWithKind("1 ม้วน/วัน", "trash_bags"), false);
+assert.equal(isQtyCompatibleWithKind("10 ใบ/เดือน", "toilet_paper"), false);
+assert.equal(formatQuantityPhrase("20", "trash_bags"), "20 ใบ/เดือน");
+assert.equal(formatQuantityPhrase("2", "toilet_paper"), "2 แพ็ค/เดือน");
+assert.equal(formatQuantityPhrase("1", "chemical"), "1 ขวด/เดือน");
 
 const incomplete = emptyInputs({ client_name: "x" });
 assert.ok(missingRequiredFields(incomplete).includes("เลขที่สัญญา"));

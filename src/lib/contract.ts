@@ -129,24 +129,26 @@ export const STAFF_ROLE_PRESETS = [
   "พนักงานรายวัน",
 ] as const;
 
+/** @deprecated Prefer material-specific qty presets. */
 export const QUANTITY_PRESETS = [
   "ตามความเหมาะสม",
   "10 ใบ/เดือน",
   "20 ใบ/เดือน",
   "50 ใบ/เดือน",
-  "1 แพ็ค/เดือน",
-  "2 แพ็ค/เดือน",
 ] as const;
 
+/** ถุงขยะ — ใบ / แพ็ค / ม้วนถุง ต่อเดือน */
 export const TRASH_BAG_QTY_PRESETS = [
   "ตามความเหมาะสม",
   "10 ใบ/เดือน",
   "20 ใบ/เดือน",
   "50 ใบ/เดือน",
   "100 ใบ/เดือน",
-  "2 ม้วน/เดือน",
+  "1 แพ็ค/เดือน",
+  "2 แพ็ค/เดือน",
 ] as const;
 
+/** กระดาษชำระ — แพ็ค / ม้วน ต่อเดือน */
 export const TOILET_PAPER_QTY_PRESETS = [
   "ตามความเหมาะสม",
   "1 แพ็ค/เดือน",
@@ -154,6 +156,16 @@ export const TOILET_PAPER_QTY_PRESETS = [
   "4 แพ็ค/เดือน",
   "10 ม้วน/เดือน",
   "20 ม้วน/เดือน",
+] as const;
+
+/** น้ำยา / วัสดุอื่น — ขวด แกลลอน ลิตร กล่อง */
+export const CHEMICAL_QTY_PRESETS = [
+  "ตามความเหมาะสม",
+  "1 ขวด/เดือน",
+  "2 ขวด/เดือน",
+  "1 แกลลอน/เดือน",
+  "2 แกลลอน/เดือน",
+  "1 กล่อง/เดือน",
 ] as const;
 
 export const TRASH_BAG_SIZE_PRESETS = [
@@ -168,6 +180,118 @@ export const TOILET_PAPER_SIZE_PRESETS = [
   "ม้วนใหญ่",
   "แพ็คมาตรฐาน",
 ] as const;
+
+export const CHEMICAL_SIZE_PRESETS = [
+  "ขนาดมาตรฐาน",
+  "ขวด 1 ลิตร",
+  "แกลลอน 5 ลิตร",
+] as const;
+
+export type ConsumableKind = "trash_bags" | "toilet_paper" | "chemical";
+
+export function getConsumableKind(
+  item: Pick<ConsumableSpec, "id" | "name">
+): ConsumableKind {
+  const name = item.name.trim();
+  if (item.id === "trash_bags" || name.includes("ถุงขยะ")) {
+    return "trash_bags";
+  }
+  if (
+    item.id === "toilet_paper" ||
+    name.includes("กระดาษ") ||
+    name.includes("ทิชชู่") ||
+    name.includes("ทิชชู")
+  ) {
+    return "toilet_paper";
+  }
+  return "chemical";
+}
+
+export function qtyPresetsForKind(kind: ConsumableKind): readonly string[] {
+  switch (kind) {
+    case "trash_bags":
+      return TRASH_BAG_QTY_PRESETS;
+    case "toilet_paper":
+      return TOILET_PAPER_QTY_PRESETS;
+    default:
+      return CHEMICAL_QTY_PRESETS;
+  }
+}
+
+export function sizePresetsForKind(kind: ConsumableKind): readonly string[] {
+  switch (kind) {
+    case "trash_bags":
+      return TRASH_BAG_SIZE_PRESETS;
+    case "toilet_paper":
+      return TOILET_PAPER_SIZE_PRESETS;
+    default:
+      return CHEMICAL_SIZE_PRESETS;
+  }
+}
+
+/** หน่วยที่อนุญาตสำหรับจำนวนของแต่ละชนิดวัสดุ (ใช้กรอง preset เก่าที่ไม่เข้ากัน) */
+export function isQtyCompatibleWithKind(
+  quantity: string,
+  kind: ConsumableKind
+): boolean {
+  const q = quantity.trim();
+  if (!q || q === "ตามความเหมาะสม" || q === "กำหนดเอง") return true;
+  if (/^\d+([.,]\d+)?$/.test(q)) return true;
+
+  const allowed =
+    kind === "trash_bags"
+      ? /(ใบ|แพ็ค|ม้วน)/
+      : kind === "toilet_paper"
+        ? /(แพ็ค|ม้วน)/
+        : /(ขวด|แกลลอน|ลิตร|กล่อง|กระป๋อง)/;
+
+  if (!allowed.test(q)) return false;
+  // ไม่ใช้ /วัน กับหัวข้อจำนวนต่อเดือนของวัสดุสิ้นเปลือง
+  if (/\/\s*วัน/.test(q) || /ต่อวัน/.test(q)) return false;
+  return true;
+}
+
+export function defaultQtyUnitForKind(kind: ConsumableKind): string {
+  switch (kind) {
+    case "trash_bags":
+      return "ใบ/เดือน";
+    case "toilet_paper":
+      return "แพ็ค/เดือน";
+    default:
+      return "ขวด/เดือน";
+  }
+}
+
+export function qtyMetaForKind(kind: ConsumableKind): {
+  label: string;
+  placeholder: string;
+  hint: string;
+  sizePlaceholder: string;
+} {
+  switch (kind) {
+    case "trash_bags":
+      return {
+        label: "จำนวน (ต่อเดือน)",
+        placeholder: "เช่น 20 ใบ/เดือน",
+        hint: "หน่วยของถุงขยะ: ใบ/เดือน หรือ แพ็ค/เดือน",
+        sizePlaceholder: "เช่น 30x40 นิ้ว หรือ 40x60 ซม.",
+      };
+    case "toilet_paper":
+      return {
+        label: "จำนวน (ต่อเดือน)",
+        placeholder: "เช่น 2 แพ็ค/เดือน",
+        hint: "หน่วยของกระดาษชำระ: แพ็ค/เดือน หรือ ม้วน/เดือน",
+        sizePlaceholder: "เช่น ม้วนใหญ่",
+      };
+    default:
+      return {
+        label: "จำนวน (ต่อเดือน)",
+        placeholder: "เช่น 2 ขวด/เดือน",
+        hint: "หน่วยของน้ำยา/วัสดุ: ขวด แกลลอน ลิตร หรือ กล่อง ต่อเดือน",
+        sizePlaceholder: "เช่น ขวด 1 ลิตร",
+      };
+  }
+}
 
 function createVariantId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -268,6 +392,7 @@ export function normalizeConsumables(
 
 export function formatConsumableLine(item: ConsumableSpec): string {
   const name = item.name.trim() || "วัสดุสิ้นเปลือง";
+  const kind = getConsumableKind(item);
   if (!item.enabled) {
     return `ไม่รวม${name} (ผู้ว่าจ้างจัดหาเอง)`;
   }
@@ -280,7 +405,7 @@ export function formatConsumableLine(item: ConsumableSpec): string {
         const parts: string[] = [];
         if (v.size.trim()) parts.push(`ขนาด ${v.size.trim()}`);
         if (v.quantity.trim()) {
-          parts.push(`จำนวน ${formatQuantityPhrase(v.quantity.trim())}`);
+          parts.push(`จำนวน ${formatQuantityPhrase(v.quantity.trim(), kind)}`);
         }
         return parts.join(" ");
       })
@@ -293,15 +418,18 @@ export function formatConsumableLine(item: ConsumableSpec): string {
   const parts = [`ผู้รับจ้างจัดหา${name}`];
   if (item.size.trim()) parts.push(`ขนาด ${item.size.trim()}`);
   if (item.quantity.trim()) {
-    parts.push(`จำนวน ${formatQuantityPhrase(item.quantity.trim())}`);
+    parts.push(`จำนวน ${formatQuantityPhrase(item.quantity.trim(), kind)}`);
   }
   return parts.join(" ");
 }
 
-/** If user typed a bare number, treat it as per-month. */
-function formatQuantityPhrase(quantity: string): string {
+/** If user typed a bare number, append the unit for that material kind. */
+export function formatQuantityPhrase(
+  quantity: string,
+  kind: ConsumableKind = "chemical"
+): string {
   if (/^\d+([.,]\d+)?$/.test(quantity)) {
-    return `${quantity} ต่อเดือน`;
+    return `${quantity} ${defaultQtyUnitForKind(kind)}`;
   }
   return quantity;
 }
