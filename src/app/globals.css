@@ -255,23 +255,23 @@
 .contract-sign-block {
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  gap: 1.25rem;
   width: 100%;
   margin-top: auto;
-  padding-top: 2rem;
+  padding-top: 0.9rem;
 }
 
 .sign-pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  column-gap: 2.75rem;
+  column-gap: 2rem;
   width: 100%;
   align-items: start;
 }
 
 .sign-line {
   display: grid;
-  grid-template-rows: 3.1em 3.1em 1.55em 1.55em;
+  grid-template-rows: 2.35em 2.2em 1.3em 1.3em;
   width: 100%;
   min-width: 0;
   font-size: 13px;
@@ -281,7 +281,7 @@
 
 @supports (grid-template-rows: subgrid) {
   .sign-pair {
-    grid-template-rows: 3.1em 3.1em 1.55em 1.55em;
+    grid-template-rows: 2.35em 2.2em 1.3em 1.3em;
   }
 
   .sign-line {
@@ -294,23 +294,23 @@
   display: grid;
   grid-template-columns: 2.7em minmax(4.5rem, 1fr) auto;
   align-items: end;
-  column-gap: 0.4em;
+  column-gap: 0.35em;
   width: 100%;
   margin: 0;
-  min-height: 3.1em;
+  min-height: 2.35em;
   text-align: start;
 }
 
 .sign-ink-label,
 .sign-ink-role {
   white-space: nowrap;
-  padding-bottom: 0.08em;
+  padding-bottom: 0.06em;
 }
 
 .sign-rule {
   display: block;
   min-width: 0;
-  height: 2.45em;
+  height: 1.85em;
   border-bottom: 1px solid #171717;
 }
 
@@ -322,7 +322,7 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: 0.55em;
+  gap: 0.45em;
   white-space: nowrap;
 }
 
@@ -334,22 +334,22 @@
 
 .sign-name-fill {
   min-width: 8rem;
-  padding: 0 0.15em 0.08em;
+  padding: 0 0.15em 0.06em;
 }
 
 .sign-fish {
   display: inline-block;
   width: 9.5rem;
-  height: 1.45em;
+  height: 1.2em;
   flex: 0 0 9.5rem;
   border-bottom: 1.5px dotted #171717;
   vertical-align: bottom;
 }
 
 .sign-fish-wide {
-  width: 11.5rem;
-  flex-basis: 11.5rem;
-  height: 2.2em;
+  width: 11rem;
+  flex-basis: 11rem;
+  height: 1.65em;
 }
 
 .sign-fish-inline {
@@ -526,12 +526,12 @@
 
   .contract-sign-block {
     margin-top: auto;
-    padding-top: 2rem;
-    gap: 2.5rem;
+    padding-top: 0.9rem;
+    gap: 1.25rem;
   }
 
   .sign-pair {
-    column-gap: 2.75rem;
+    column-gap: 2rem;
   }
 
   img,
