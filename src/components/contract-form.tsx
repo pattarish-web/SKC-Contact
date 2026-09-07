@@ -1,6 +1,7 @@
 "use client";
 
 import { AttachmentPanel } from "@/components/attachment-panel";
+import { PresetField } from "@/components/preset-field";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,6 @@ import {
   WORK_HOUR_PRESETS,
 } from "@/lib/contract";
 import { formatMoney } from "@/lib/thai";
-import { cn } from "cn";
 import { RotateCcw, Sparkles } from "lucide-react";
 
 function Field({
@@ -35,31 +35,6 @@ function Field({
         <p className="text-xs text-muted-foreground">{hint}</p>
       ) : null}
     </div>
-  );
-}
-
-function Chip({
-  active,
-  children,
-  onClick,
-}: {
-  active: boolean;
-  children: React.ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "rounded-full border px-2.5 py-1 text-xs transition-colors",
-        active
-          ? "border-teal-700 bg-teal-700 text-white"
-          : "border-border bg-background text-foreground hover:bg-muted"
-      )}
-    >
-      {children}
-    </button>
   );
 }
 
@@ -86,13 +61,23 @@ export function ContractForm({
       {onFillSample || onReset ? (
         <div className="flex gap-2">
           {onFillSample ? (
-            <Button type="button" variant="outline" className="flex-1" onClick={onFillSample}>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={onFillSample}
+            >
               <Sparkles data-icon="inline-start" />
               ใส่ข้อมูลตัวอย่าง
             </Button>
           ) : null}
           {onReset ? (
-            <Button type="button" variant="outline" className="flex-1" onClick={onReset}>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={onReset}
+            >
               <RotateCcw data-icon="inline-start" />
               ล้างฟอร์ม
             </Button>
@@ -152,24 +137,15 @@ export function ContractForm({
             placeholder="ชื่อ-นามสกุล"
           />
         </Field>
-        <Field label="ตำแหน่ง" htmlFor="client_position">
-          <Input
-            id="client_position"
-            value={inputs.client_position}
-            onChange={(e) => onChange("client_position", e.target.value)}
-          />
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {POSITION_PRESETS.map((item) => (
-              <Chip
-                key={item}
-                active={inputs.client_position === item}
-                onClick={() => onChange("client_position", item)}
-              >
-                {item}
-              </Chip>
-            ))}
-          </div>
-        </Field>
+        <PresetField
+          label="ตำแหน่ง"
+          htmlFor="client_position"
+          value={inputs.client_position}
+          onChange={(value) => onChange("client_position", value)}
+          builtins={POSITION_PRESETS}
+          group="client_position"
+          placeholder="เช่น ผู้จัดการฝ่ายอาคาร"
+        />
       </section>
 
       <section className="space-y-3">
@@ -238,42 +214,24 @@ export function ContractForm({
             />
           </Field>
         </div>
-        <Field label="วันปฏิบัติงาน" htmlFor="work_days">
-          <Input
-            id="work_days"
-            value={inputs.work_days}
-            onChange={(e) => onChange("work_days", e.target.value)}
-          />
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {WORK_DAY_PRESETS.map((item) => (
-              <Chip
-                key={item}
-                active={inputs.work_days === item}
-                onClick={() => onChange("work_days", item)}
-              >
-                {item}
-              </Chip>
-            ))}
-          </div>
-        </Field>
-        <Field label="เวลาปฏิบัติงาน" htmlFor="work_hours">
-          <Input
-            id="work_hours"
-            value={inputs.work_hours}
-            onChange={(e) => onChange("work_hours", e.target.value)}
-          />
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {WORK_HOUR_PRESETS.map((item) => (
-              <Chip
-                key={item}
-                active={inputs.work_hours === item}
-                onClick={() => onChange("work_hours", item)}
-              >
-                {item}
-              </Chip>
-            ))}
-          </div>
-        </Field>
+        <PresetField
+          label="วันปฏิบัติงาน"
+          htmlFor="work_days"
+          value={inputs.work_days}
+          onChange={(value) => onChange("work_days", value)}
+          builtins={WORK_DAY_PRESETS}
+          group="work_days"
+          placeholder="เช่น จันทร์-พฤหัสบดี"
+        />
+        <PresetField
+          label="เวลาปฏิบัติงาน"
+          htmlFor="work_hours"
+          value={inputs.work_hours}
+          onChange={(value) => onChange("work_hours", value)}
+          builtins={WORK_HOUR_PRESETS}
+          group="work_hours"
+          placeholder="เช่น 06.00-15.00 น."
+        />
         <Field
           label="ค่าล่วงเวลา (บาท/ชั่วโมง)"
           htmlFor="ot_rate"
