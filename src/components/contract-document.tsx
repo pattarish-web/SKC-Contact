@@ -180,7 +180,16 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
             ภายในวันที่ 30 ของทุก ๆ เดือน โดยเงื่อนไขการวางบิล/โอนชำระเงิน
             ให้เป็นไปตามที่ผู้ว่าจ้างกำหนด
           </li>
-          <li>{ctx.equipment_clause}</li>
+          <li>
+            {ctx.equipment_clause}
+            {ctx.consumable_lines.length > 0 ? (
+              <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                {ctx.consumable_lines.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            ) : null}
+          </li>
           <li>
             หากมีการกำหนดค่าแรงขั้นต่ำใหม่โดยผลของกฎหมายแรงงาน
             ผู้ว่าจ้างตกลงยินยอมปรับค่าบริการให้กับผู้รับจ้างตามที่มีการตกลงกันในภายหลัง
@@ -359,7 +368,16 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
         <p className="mt-3 font-semibold">หมายเหตุ :</p>
         <ol className="mt-1 list-decimal space-y-1 pl-6">
           <li>ราคาดังกล่าวยังไม่รวมภาษีมูลค่าเพิ่ม</li>
-          <li>{ctx.equipment_clause}</li>
+          <li>
+            {ctx.equipment_clause}
+            {ctx.consumable_lines.length > 0 ? (
+              <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                {ctx.consumable_lines.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            ) : null}
+          </li>
           <li>
             กรณีพนักงานทำงานล่วงเวลาในวันทำงาน อัตราค่าบริการชั่วโมงละ{" "}
             <Fill value={ctx.ot_rate} fallback="......" /> บาท

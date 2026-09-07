@@ -1,5 +1,13 @@
 import { bahtText, formatMoney, round2, todayISO, endDateFromStart } from "./thai";
 
+export type ConsumableSpec = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  size: string;
+  quantity: string;
+};
+
 export type ContractInputs = {
   contract_no: string;
   contract_date: string;
@@ -11,6 +19,7 @@ export type ContractInputs = {
   end_date: string;
   contract_months: string;
   include_equipment: boolean;
+  consumables: ConsumableSpec[];
   staff_count: string;
   work_days: string;
   work_hours: string;
@@ -32,6 +41,8 @@ export type ContractContext = {
   end_date: string;
   contract_months: number;
   equipment_clause: string;
+  consumables: ConsumableSpec[];
+  consumable_lines: string[];
   staff_count: number;
   work_days: string;
   work_hours: string;
@@ -74,7 +85,99 @@ export const POSITION_PRESETS = [
   "เจ้าของกิจการ",
 ] as const;
 
+export const QUANTITY_PRESETS = [
+  "ตามความเหมาะสม",
+  "1 ม้วน/วัน",
+  "2 ม้วน/วัน",
+  "1 แพ็ค/สัปดาห์",
+  "2 แพ็ค/สัปดาห์",
+] as const;
+
+export const TRASH_BAG_SIZE_PRESETS = [
+  "18x20 นิ้ว",
+  "24x28 นิ้ว",
+  "30x40 นิ้ว",
+  "36x45 นิ้ว",
+] as const;
+
+export const TOILET_PAPER_SIZE_PRESETS = [
+  "ม้วนเล็ก",
+  "ม้วนใหญ่",
+  "แพ็คมาตรฐาน",
+] as const;
+
+export function defaultConsumables(): ConsumableSpec[] {
+  return [
+    {
+      id: "trash_bags",
+      name: "ถุงขยะ",
+      enabled: true,
+      size: "30x40 นิ้ว",
+      quantity: "ตามความเหมาะสม",
+    },
+    {
+      id: "toilet_paper",
+      name: "กระดาษชำระ",
+      enabled: true,
+      size: "ม้วนใหญ่",
+      quantity: "ตามความเหมาะสม",
+    },
+  ];
+}
+
+function createConsumableId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `item_${crypto.randomUUID()}`;
+  }
+  return `item_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function createConsumable(
+  partial: Partial<ConsumableSpec> = {}
+): ConsumableSpec {
+  return {
+    id: partial.id || createConsumableId(),
+    name: partial.name?.trim() || "วัสดุสิ้นเปลือง",
+    enabled: partial.enabled ?? true,
+    size: partial.size ?? "",
+    quantity: partial.quantity ?? "ตามความเหมาะสม",
+  };
+}
+
+export function normalizeConsumables(
+  items: ConsumableSpec[] | undefined | null
+): ConsumableSpec[] {
+  if (!Array.isArray(items) || items.length === 0) {
+    return defaultConsumables();
+  }
+  return items.map((item) =>
+    createConsumable({
+      id: item?.id,
+      name: item?.name,
+      enabled: item?.enabled ?? true,
+      size: item?.size ?? "",
+      quantity: item?.quantity ?? "",
+    })
+  );
+}
+
+export function formatConsumableLine(item: ConsumableSpec): string {
+  const name = item.name.trim() || "วัสดุสิ้นเปลือง";
+  if (!item.enabled) {
+    return `ไม่รวม${name} (ผู้ว่าจ้างจัดหาเอง)`;
+  }
+  const parts = [`ผู้รับจ้างจัดหา${name}`];
+  if (item.size.trim()) parts.push(`ขนาด ${item.size.trim()}`);
+  if (item.quantity.trim()) parts.push(`จำนวน ${item.quantity.trim()}`);
+  return parts.join(" ");
+}
+
+export function buildConsumableLines(items: ConsumableSpec[]): string[] {
+  return normalizeConsumables(items).map(formatConsumableLine);
+}
+
 export function emptyInputs(partial: Partial<ContractInputs> = {}): ContractInputs {
+  const { consumables, ...rest } = partial;
   return {
     contract_no: "",
     contract_date: "",
@@ -94,7 +197,8 @@ export function emptyInputs(partial: Partial<ContractInputs> = {}): ContractInpu
     contractor_authorized: "",
     witness_client: "",
     witness_contractor: "",
-    ...partial,
+    ...rest,
+    consumables: normalizeConsumables(consumables),
   };
 }
 
@@ -114,6 +218,7 @@ export function buildSampleInputs(contractNo?: string): ContractInputs {
     end_date: endDateFromStart(start, months),
     contract_months: String(months),
     include_equipment: true,
+    consumables: defaultConsumables(),
     staff_count: "2",
     work_days: "จันทร์-อาทิตย์",
     work_hours: "08.00-17.00 น.",
@@ -129,7 +234,7 @@ export const EQUIPMENT_INCLUDED =
   "ค่าจ้างตามสัญญานี้รวมค่าแรงพนักงาน ค่าอุปกรณ์เครื่องมือเครื่องใช้น้ำยาทำความสะอาดต่างๆ และอื่นๆ สำหรับใช้ในการทำความสะอาดแล้ว";
 
 export const EQUIPMENT_EXCLUDED =
-  "ค่าจ้างตามสัญญานี้เป็นค่าแรงพนักงาน ไม่รวมอุปกรณ์เครื่องมือเครื่องใช้น้ำยาทำความสะอาด ถุงขยะดำ กระดาษชำระ และวัสดุสิ้นเปลืองอื่นๆ";
+  "ค่าจ้างตามสัญญานี้เป็นค่าแรงพนักงาน ไม่รวมอุปกรณ์เครื่องมือเครื่องใช้น้ำยาทำความสะอาด และวัสดุสิ้นเปลืองอื่นๆ";
 
 function parseNumber(value: string): number {
   const n = Number(String(value).replace(/,/g, "").trim());
@@ -146,6 +251,9 @@ export function buildContractContext(inputs: ContractInputs): ContractContext {
   const vat_amount = round2(total_contract_price_raw * 0.07);
   const total_with_vat = round2(total_contract_price_raw + vat_amount);
 
+  const consumables = normalizeConsumables(inputs.consumables);
+  const consumable_lines = buildConsumableLines(consumables);
+
   const equipment_clause = inputs.include_equipment
     ? EQUIPMENT_INCLUDED
     : EQUIPMENT_EXCLUDED;
@@ -161,6 +269,8 @@ export function buildContractContext(inputs: ContractInputs): ContractContext {
     end_date: inputs.end_date,
     contract_months: months,
     equipment_clause,
+    consumables,
+    consumable_lines,
     staff_count,
     work_days: inputs.work_days.trim() || "จันทร์-อาทิตย์",
     work_hours: inputs.work_hours.trim() || "08.00-17.00 น.",

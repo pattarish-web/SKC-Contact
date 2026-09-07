@@ -53,6 +53,34 @@ assert.equal(ctx.total_contract_price, "360,000.00");
 assert.equal(ctx.total_price_text, "สามแสนหกหมื่นบาทถ้วน");
 assert.equal(ctx.vat_amount, 25200);
 assert.equal(missingRequiredFields(sample).length, 0);
+assert.ok(!ctx.equipment_clause.includes("ถุงขยะ"));
+assert.ok(!ctx.equipment_clause.includes("กระดาษชำระ"));
+assert.equal(ctx.consumable_lines.length, 2);
+assert.match(ctx.consumable_lines[0]!, /ถุงขยะ/);
+assert.match(ctx.consumable_lines[1]!, /กระดาษชำระ/);
+
+const withoutBags = emptyInputs({
+  ...sample,
+  consumables: [
+    {
+      id: "trash_bags",
+      name: "ถุงขยะ",
+      enabled: false,
+      size: "",
+      quantity: "",
+    },
+    {
+      id: "toilet_paper",
+      name: "กระดาษชำระ",
+      enabled: true,
+      size: "ม้วนใหญ่",
+      quantity: "ตามความเหมาะสม",
+    },
+  ],
+});
+const withoutBagsCtx = buildContractContext(withoutBags);
+assert.match(withoutBagsCtx.consumable_lines[0]!, /ไม่รวมถุงขยะ/);
+assert.match(withoutBagsCtx.consumable_lines[1]!, /ผู้รับจ้างจัดหากระดาษชำระ/);
 
 const incomplete = emptyInputs({ client_name: "x" });
 assert.ok(missingRequiredFields(incomplete).includes("เลขที่สัญญา"));

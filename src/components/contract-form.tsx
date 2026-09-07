@@ -1,6 +1,7 @@
 "use client";
 
 import { AttachmentPanel } from "@/components/attachment-panel";
+import { ConsumablesPanel } from "@/components/consumables-panel";
 import { PresetField } from "@/components/preset-field";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -265,6 +266,20 @@ export function ContractForm({
             </span>
           </span>
         </label>
+        <ConsumablesPanel
+          items={inputs.consumables}
+          onChange={(items) => onChange("consumables", items)}
+        />
+        {ctx.consumable_lines.length > 0 ? (
+          <div className="rounded-lg border border-teal-100 bg-teal-50/60 px-3 py-2 text-xs leading-5 text-teal-950">
+            <p className="font-medium">ข้อความที่จะปรากฏในสัญญา</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4">
+              {ctx.consumable_lines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </section>
 
       <section className="space-y-3">
