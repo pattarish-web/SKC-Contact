@@ -106,7 +106,11 @@ export function ContractForm({
           <Field
             label="เลขที่สัญญา"
             htmlFor="contract_no"
-            hint="รูปแบบ SC-ปีพ.ศ.-เดือน-ลำดับ เช่น SC-2569-09-001"
+            hint={
+              activeId
+                ? "กำลังแก้ไขสัญญาที่มีอยู่ — กดบันทึกจะทับเลขที่นี้ ไม่สร้างใหม่"
+                : "รูปแบบ SC-ปีพ.ศ.-เดือน-ลำดับ เช่น SC-2569-09-001"
+            }
           >
             <div className="flex gap-2">
               <Input
@@ -114,22 +118,26 @@ export function ContractForm({
                 value={inputs.contract_no}
                 onChange={(e) => onChange("contract_no", e.target.value)}
                 placeholder="SC-2569-09-001"
+                readOnly={Boolean(activeId)}
+                className={activeId ? "bg-muted/50" : undefined}
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="shrink-0"
-                onClick={() =>
-                  onChange(
-                    "contract_no",
-                    peekNextContractNo(inputs.contract_date, savedContractNos)
-                  )
-                }
-                title="แสดงเลขถัดไปจากสัญญาที่บันทึกแล้ว (ยังไม่จองจนกว่าจะกดบันทึก)"
-              >
-                เลขใหม่
-              </Button>
+              {!activeId ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() =>
+                    onChange(
+                      "contract_no",
+                      peekNextContractNo(inputs.contract_date, savedContractNos)
+                    )
+                  }
+                  title="แสดงเลขถัดไปจากสัญญาที่บันทึกแล้ว (ยังไม่จองจนกว่าจะกดบันทึก)"
+                >
+                  เลขใหม่
+                </Button>
+              ) : null}
             </div>
           </Field>
           <Field label="วันที่ทำสัญญา" htmlFor="contract_date">

@@ -21,14 +21,12 @@ import {
   deleteContract,
   getContract,
   listContracts,
-  renumberSavedContractsFromOne,
   saveContract,
   type SavedContract,
 } from "@/lib/contracts-db";
 import {
   clearDraft,
   loadContractIntoDraft,
-  patchActiveDraftContractNo,
   setActiveContractId,
   syncUnsavedDraftContractNo,
   useContractDraft,
@@ -112,10 +110,7 @@ export function ContractApp() {
           // Keep local library if cloud is temporarily unavailable.
         }
       }
-      const { rows, plan } = await renumberSavedContractsFromOne();
-      for (const item of plan) {
-        patchActiveDraftContractNo(item.id, item.to);
-      }
+      const rows = await listContracts();
       const nos = savedNosOf(rows);
       reconcileSeqFromSaved(nos);
       syncUnsavedDraftContractNo(nos);
@@ -129,10 +124,7 @@ export function ContractApp() {
   }, []);
 
   const reloadLocalLibrary = useCallback(async () => {
-    const { rows, plan } = await renumberSavedContractsFromOne();
-    for (const item of plan) {
-      patchActiveDraftContractNo(item.id, item.to);
-    }
+    const rows = await listContracts();
     const nos = savedNosOf(rows);
     reconcileSeqFromSaved(nos);
     syncUnsavedDraftContractNo(nos);
@@ -174,11 +166,8 @@ export function ContractApp() {
             window.history.replaceState({}, "", url.toString());
           }
 
-          const { rows, plan } = await renumberSavedContractsFromOne();
+          const rows = await listContracts();
           if (cancelled) return;
-          for (const item of plan) {
-            patchActiveDraftContractNo(item.id, item.to);
-          }
           const nos = savedNosOf(rows);
           reconcileSeqFromSaved(nos);
           syncUnsavedDraftContractNo(nos);
@@ -194,7 +183,7 @@ export function ContractApp() {
             );
             setLibraryLoading(false);
             try {
-              const { rows } = await renumberSavedContractsFromOne();
+              const rows = await listContracts();
               setLibrary(rows);
             } catch {
               // ignore
@@ -292,22 +281,29 @@ export function ContractApp() {
     try {
       const latest = await listContracts();
       const nos = savedNosOf(latest);
+      // Editing an opened contract always overwrites that record and keeps its number.
+      // New create / renewal copy (no activeId) allocates a fresh number.
+      const editingId = activeId;
       const payload =
-        activeId != null
+        editingId != null
           ? inputs
           : {
               ...inputs,
               contract_no: allocateContractNo(inputs.contract_date, nos),
             };
-      const saved = await saveContract(payload, { id: activeId });
+      const saved = await saveContract(payload, { id: editingId });
       setInputs(saved.inputs);
       setActiveContractId(saved.id);
       const cloudOk = await quietPushCloud();
       await reloadLocalLibrary();
+      const action =
+        editingId != null
+          ? `อัปเดตสัญญา ${saved.inputs.contract_no} แล้ว`
+          : `สร้างสัญญา ${saved.inputs.contract_no} แล้ว`;
       setSaveMessage(
         cloudOk
-          ? `บันทึกแล้ว · ${saved.inputs.contract_no} · เครื่องอื่นเปิดเว็บนี้จะเห็นตาม`
-          : `บันทึกในเครื่องแล้ว · ${saved.inputs.contract_no} · แต่ส่งขึ้นคลังร่วมไม่สำเร็จ ลองบันทึกอีกครั้ง`
+          ? `${action} · เครื่องอื่นเปิดเว็บนี้จะเห็นตาม`
+          : `${action} ในเครื่อง · แต่ส่งขึ้นคลังร่วมไม่สำเร็จ ลองบันทึกอีกครั้ง`
       );
     } catch {
       window.alert("บันทึกสัญญาไม่สำเร็จ");
