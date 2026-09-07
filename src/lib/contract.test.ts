@@ -6,6 +6,7 @@ import {
   DEFAULT_SOW_SHARED_MATERIALS,
   emptyInputs,
   formatQuantityPhrase,
+  formatSowChecklist,
   getConsumableKind,
   isQtyCompatibleWithKind,
   maxSavedSeq,
@@ -13,6 +14,7 @@ import {
   normalizeContractNo,
   normalizeSowFields,
   normalizeStaffRoles,
+  parseSowChecklist,
   peekNextContractNo,
   planContractRenumber,
 } from "./contract";
@@ -194,6 +196,17 @@ const sow = normalizeSowFields({
 assert.equal(sow.sow_tools, "ไม้กวาด ถังน้ำ");
 assert.match(DEFAULT_SOW_ELECTRICAL, /เครื่องดูดฝุ่น/);
 assert.match(DEFAULT_SOW_SHARED_MATERIALS, /น้ำยา/);
+
+const parsedTools = parseSowChecklist(
+  "ไม้กวาดอ่อน\nถังน้ำ\nรายการพิเศษของลูกค้า",
+  ["ไม้กวาดอ่อน", "ถังน้ำ", "ขันน้ำ"]
+);
+assert.deepEqual(parsedTools.selected, ["ไม้กวาดอ่อน", "ถังน้ำ"]);
+assert.equal(parsedTools.extra, "รายการพิเศษของลูกค้า");
+assert.equal(
+  formatSowChecklist(["ไม้กวาดอ่อน", "ถังน้ำ"], ""),
+  "ไม้กวาดอ่อน\nถังน้ำ"
+);
 
 assert.equal(maxSavedSeq(["SC-2569-09-010", "SC-2569-09-013"], 2569, 9), 13);
 assert.equal(maxSavedSeq([], 2569, 9), 0);

@@ -3,6 +3,7 @@
 import { AttachmentPanel } from "@/components/attachment-panel";
 import { ConsumablesPanel } from "@/components/consumables-panel";
 import { PresetField } from "@/components/preset-field";
+import { SowChecklist } from "@/components/sow-checklist";
 import { StaffRolesPanel } from "@/components/staff-roles-panel";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,6 +16,9 @@ import {
   DEFAULT_SOW_SHARED_MATERIALS,
   DEFAULT_SOW_TOOLS,
   POSITION_PRESETS,
+  SOW_ELECTRICAL_OPTIONS,
+  SOW_SHARED_MATERIAL_OPTIONS,
+  SOW_TOOL_OPTIONS,
   WORK_DAY_PRESETS,
   WORK_HOUR_PRESETS,
   peekNextContractNo,
@@ -302,48 +306,30 @@ export function ContractForm({
               onChange("sow_shared_materials", DEFAULT_SOW_SHARED_MATERIALS);
             }}
           >
-            ใส่รายการมาตรฐาน (แยกเครื่องไฟฟ้า / วัสดุร่วม)
+            ติ๊กรายการมาตรฐานทั้งหมด
           </Button>
         </div>
-        <Field
+        <SowChecklist
           label="2.1 อุปกรณ์ / เครื่องมือทั่วไป"
-          htmlFor="sow_tools"
           hint="ไม้กวาด ม็อบ ถัง แปรง ฯลฯ — ไม่รวมเครื่องใช้ไฟฟ้า"
-        >
-          <Textarea
-            id="sow_tools"
-            rows={4}
-            value={inputs.sow_tools}
-            onChange={(e) => onChange("sow_tools", e.target.value)}
-            placeholder="เช่น ไม้ม็อบ ไม้กวาด ถังน้ำ ถุงมือ ป้ายเตือน"
-          />
-        </Field>
-        <Field
+          options={SOW_TOOL_OPTIONS}
+          value={inputs.sow_tools}
+          onChange={(next) => onChange("sow_tools", next)}
+        />
+        <SowChecklist
           label="2.2 เครื่องใช้ไฟฟ้า"
-          htmlFor="sow_electrical"
-          hint="แยกหัวข้อชัดเจน — เครื่องดูดฝุ่น เครื่องขัดพื้น สายไฟ ฯลฯ"
-        >
-          <Textarea
-            id="sow_electrical"
-            rows={3}
-            value={inputs.sow_electrical}
-            onChange={(e) => onChange("sow_electrical", e.target.value)}
-            placeholder="เช่น เครื่องดูดฝุ่น เครื่องดูดน้ำ เครื่องขัดพื้น สายไฟต่อพ่วง"
-          />
-        </Field>
-        <Field
+          hint="เครื่องดูดฝุ่น เครื่องขัดพื้น สายไฟ ฯลฯ"
+          options={SOW_ELECTRICAL_OPTIONS}
+          value={inputs.sow_electrical}
+          onChange={(next) => onChange("sow_electrical", next)}
+        />
+        <SowChecklist
           label="2.3 วัสดุและน้ำยาที่ใช้ร่วมกัน"
-          htmlFor="sow_shared_materials"
-          hint="น้ำยา แผ่นขัด แอลกอฮอล์ ฯลฯ — วัสดุสิ้นเปลืองประจำวันดูที่ข้อถุงขยะ/กระดาษชำระ"
-        >
-          <Textarea
-            id="sow_shared_materials"
-            rows={4}
-            value={inputs.sow_shared_materials}
-            onChange={(e) => onChange("sow_shared_materials", e.target.value)}
-            placeholder="เช่น น้ำยาถูพื้น น้ำยาห้องน้ำ น้ำยาเช็ดกระจก แผ่นขัดพื้น"
-          />
-        </Field>
+          hint="วัสดุสิ้นเปลืองประจำวัน (ถุงขยะ/กระดาษชำระ) ดูที่ข้อวัสดุสิ้นเปลืองด้านล่าง"
+          options={SOW_SHARED_MATERIAL_OPTIONS}
+          value={inputs.sow_shared_materials}
+          onChange={(next) => onChange("sow_shared_materials", next)}
+        />
       </section>
 
       <section className="space-y-3">

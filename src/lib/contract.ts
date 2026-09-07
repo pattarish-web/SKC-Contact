@@ -510,36 +510,106 @@ export const EQUIPMENT_INCLUDED =
 export const EQUIPMENT_EXCLUDED =
   "ค่าจ้างตามสัญญานี้เป็นค่าแรงพนักงาน ไม่รวมอุปกรณ์เครื่องมือเครื่องใช้น้ำยาทำความสะอาด และวัสดุสิ้นเปลืองอื่นๆ";
 
-/** เครื่องมือทั่วไป (ไม่อาศัยไฟฟ้า) — อ้างอิงมาตรฐานสัญญาแม่บ้าน */
-export const DEFAULT_SOW_TOOLS = [
-  "ไม้กวาดอ่อน / ไม้กวาด กทม. / ไม้กวาดหยากไย่ / ไม้กวาดขนไก่พลาสติก",
-  "ที่ตักขยะ ถังน้ำ ขันน้ำ ถังซูเกอร์ ถังม็อบแบบมีที่บีบน้ำ",
-  "ไม้ม็อบ + ผ้าม็อบ (ขาว/น้ำเงิน) ไม้ดันฝุ่น + ผ้าดันฝุ่น",
-  "ไม้ปาดน้ำ ชุดเช็ดทำความสะอาดกระจก ฟ็อกกี้ (กระบอกฉีด)",
-  "แปรงขัดห้องน้ำ ที่ปั๊มห้องน้ำ แปรงซักผ้า แปรงถูกพื้นด้ามยาว เกรียงแซะ",
-  "สก๊อตไบร์ท + ฟองน้ำ ผ้าขนหนู / ผ้าไมโครไฟเบอร์ ผ้าเช็ดอเนกประสงค์",
-  "ถุงมือยาง ถุงมือผ้า รองเท้าบู๊ท ป้ายเตือนพื้นเปียก",
-  "บันไดพับ ฐานล้อเข็นขยะ + ถัง สายยางน้ำ รถเข็นแม่บ้าน (ถ้ามีในพื้นที่)",
-].join("\n");
+/** รายการติ๊ก — เครื่องมือทั่วไป */
+export const SOW_TOOL_OPTIONS = [
+  "ไม้กวาดอ่อน",
+  "ไม้กวาด กทม.",
+  "ไม้กวาดหยากไย่",
+  "ไม้กวาดขนไก่พลาสติก",
+  "ที่ตักขยะ",
+  "ถังน้ำ",
+  "ขันน้ำ",
+  "ถังซูเกอร์",
+  "ถังม็อบแบบมีที่บีบน้ำ",
+  "ไม้ม็อบ + ผ้าม็อบ (ขาว/น้ำเงิน)",
+  "ไม้ดันฝุ่น + ผ้าดันฝุ่น",
+  "ไม้ปาดน้ำ",
+  "ชุดเช็ดทำความสะอาดกระจก",
+  "ฟ็อกกี้ (กระบอกฉีด)",
+  "แปรงขัดห้องน้ำ",
+  "ที่ปั๊มห้องน้ำ",
+  "แปรงซักผ้า",
+  "แปรงถูกพื้นด้ามยาว",
+  "เกรียงแซะ",
+  "สก๊อตไบร์ท + ฟองน้ำ",
+  "ผ้าขนหนู / ผ้าไมโครไฟเบอร์",
+  "ผ้าเช็ดอเนกประสงค์",
+  "ถุงมือยาง",
+  "ถุงมือผ้า",
+  "รองเท้าบู๊ท",
+  "ป้ายเตือนพื้นเปียก",
+  "บันไดพับ",
+  "ฐานล้อเข็นขยะ + ถัง",
+  "สายยางน้ำ",
+  "รถเข็นแม่บ้าน",
+] as const;
 
-/** เครื่องใช้ไฟฟ้า — แยกหัวข้อชัดเจน */
-export const DEFAULT_SOW_ELECTRICAL = [
+/** รายการติ๊ก — เครื่องใช้ไฟฟ้า */
+export const SOW_ELECTRICAL_OPTIONS = [
   "เครื่องดูดฝุ่น",
-  "เครื่องดูดน้ำ (กรณีพื้นเปียก / ล้างพื้น)",
-  "เครื่องขัดพื้น 175 รอบ (ถ้าลักษณะงานต้องขัดพื้น)",
-  "เครื่องขัดพื้นความเร็วสูง / 1,500 รอบ (ถ้าลักษณะงานต้องเงาพื้น)",
+  "เครื่องดูดน้ำ",
+  "เครื่องขัดพื้น 175 รอบ",
+  "เครื่องขัดพื้นความเร็วสูง / 1,500 รอบ",
   "สายไฟต่อพ่วงมาตรฐาน พร้อมระบบตัดไฟรั่ว",
-].join("\n");
+] as const;
 
-/** วัสดุและน้ำยาที่ใช้ร่วมกันในการปฏิบัติงาน */
-export const DEFAULT_SOW_SHARED_MATERIALS = [
-  "น้ำยาอเนกประสงค์ (เช่น T-Pol) น้ำยาถูพื้นประจำวัน น้ำยาล้างห้องน้ำ / ฆ่าเชื้อดับกลิ่น",
-  "น้ำยาเช็ดกระจก น้ำยาเช็ดเฟอร์นิเจอร์ / หนัง น้ำมันดักฝุ่น",
-  "น้ำยาเคลือบเงาพื้น / แว็กซ์ และน้ำยาลอกแว็กซ์ (เมื่อมีงานเคลือบพื้น)",
-  "แผ่นขัดพื้น (เช่น 3M ขาว / แดง / ดำ ขนาดตามเครื่อง) เมื่อใช้เครื่องขัด",
-  "แอลกอฮอล์ทำความสะอาด สำลี / ผ้าเช็ดฆ่าเชื้อ ผงซักฟอก (ซักผ้าม็อบ/ผ้าเช็ด)",
-  "หมายเหตุวัสดุสิ้นเปลืองประจำวัน (ถุงขยะ กระดาษชำระ ฯลฯ) ให้ดูข้อวัสดุสิ้นเปลืองในสัญญาและเอกสารแนบท้าย 1",
-].join("\n");
+/** รายการติ๊ก — วัสดุและน้ำยาที่ใช้ร่วมกัน */
+export const SOW_SHARED_MATERIAL_OPTIONS = [
+  "น้ำยาอเนกประสงค์ (เช่น T-Pol)",
+  "น้ำยาถูพื้นประจำวัน",
+  "น้ำยาล้างห้องน้ำ / ฆ่าเชื้อดับกลิ่น",
+  "น้ำยาเช็ดกระจก",
+  "น้ำยาเช็ดเฟอร์นิเจอร์ / หนัง",
+  "น้ำมันดักฝุ่น",
+  "น้ำยาเคลือบเงาพื้น / แว็กซ์",
+  "น้ำยาลอกแว็กซ์",
+  "แผ่นขัดพื้น (3M ขาว / แดง / ดำ)",
+  "แอลกอฮอล์ทำความสะอาด",
+  "สำลี / ผ้าเช็ดฆ่าเชื้อ",
+  "ผงซักฟอก (ซักผ้าม็อบ/ผ้าเช็ด)",
+] as const;
+
+export const DEFAULT_SOW_TOOLS = SOW_TOOL_OPTIONS.join("\n");
+export const DEFAULT_SOW_ELECTRICAL = SOW_ELECTRICAL_OPTIONS.join("\n");
+export const DEFAULT_SOW_SHARED_MATERIALS =
+  SOW_SHARED_MATERIAL_OPTIONS.join("\n");
+
+export function parseSowChecklist(
+  text: string,
+  options: readonly string[]
+): { selected: string[]; extra: string } {
+  const raw = text.trim();
+  if (!raw) return { selected: [], extra: "" };
+
+  // Prefer exact line matches first (new checkbox format).
+  const lines = raw
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const optionSet = new Set(options);
+  const selectedFromLines = lines.filter((line) => optionSet.has(line));
+  if (selectedFromLines.length > 0) {
+    const extra = lines.filter((line) => !optionSet.has(line)).join("\n");
+    return { selected: selectedFromLines, extra };
+  }
+
+  // Legacy bundled paragraphs: mark an option if its text appears.
+  const selected = options.filter((option) => raw.includes(option));
+  return {
+    selected,
+    extra: selected.length > 0 ? "" : raw,
+  };
+}
+
+export function formatSowChecklist(
+  selected: readonly string[],
+  extra = ""
+): string {
+  const lines = [...selected.map((item) => item.trim()).filter(Boolean)];
+  const trimmedExtra = extra.trim();
+  if (trimmedExtra) lines.push(trimmedExtra);
+  return lines.join("\n");
+}
 
 export function normalizeSowFields(
   partial: Partial<ContractInputs> | null | undefined

@@ -156,6 +156,31 @@ function MultilineFill({
   return <p className="leading-6 text-neutral-500">{fallback}</p>;
 }
 
+function ChecklistFill({
+  value,
+  fallback,
+}: {
+  value: string;
+  fallback: string;
+}) {
+  const items = value
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (items.length === 0) {
+    return <p className="leading-6 text-neutral-500">{fallback}</p>;
+  }
+  return (
+    <ul className="mt-1 list-disc space-y-1 pl-6 leading-6">
+      {items.map((item) => (
+        <li key={item}>
+          <span className="font-semibold">{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function ContractDocument({ ctx }: { ctx: ContractContext }) {
   const contractDate = formatThaiDate(ctx.contract_date);
   const startDate = formatThaiDate(ctx.start_date);
@@ -536,19 +561,19 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
         <p className="mt-4 font-semibold">2. รายการอุปกรณ์และวัสดุ</p>
 
         <p className="mt-2 font-semibold">2.1 อุปกรณ์ / เครื่องมือทั่วไป</p>
-        <MultilineFill
+        <ChecklistFill
           value={ctx.sow_tools}
           fallback=".............................................................................................................................................."
         />
 
         <p className="mt-3 font-semibold">2.2 เครื่องใช้ไฟฟ้า</p>
-        <MultilineFill
+        <ChecklistFill
           value={ctx.sow_electrical}
           fallback=".............................................................................................................................................."
         />
 
         <p className="mt-3 font-semibold">2.3 วัสดุและน้ำยาที่ใช้ร่วมกัน</p>
-        <MultilineFill
+        <ChecklistFill
           value={ctx.sow_shared_materials}
           fallback=".............................................................................................................................................."
         />
