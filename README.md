@@ -8,7 +8,6 @@
 - คำนวณค่าบริการรายเดือน / ทั้งสัญญา และตัวหนังสือภาษาไทยให้อัตโนมัติ
 - สลับเงื่อนไขข้อ 6 ว่ารวมหรือไม่รวมค่าอุปกรณ์น้ำยา
 - ดูตัวอย่างสัญญาสดบนหน้าจอ แล้วพิมพ์หรือ Save as PDF ขนาด A4
-- สร้างคำสั่งออกใบเสนอราคาหรือใบวางบิลใน FlowAccount ผ่าน Claude MCP
 - ร่างล่าสุดถูกบันทึกในเบราว์เซอร์อัตโนมัติ
 
 ผู้รับจ้างในเอกสารคือบริษัท สั่งการ คลีน จำกัด (เลขทะเบียนนิติบุคคล 0105569168329)
@@ -49,32 +48,6 @@ npm start -- --port 43123
 2. กด **พิมพ์ / บันทึก PDF**
 3. ในหน้าต่างพิมพ์ เลือกเครื่องพิมพ์เป็น **Save as PDF** หรือ **Microsoft Print to PDF**
 4. ตั้งค่ากระดาษเป็น A4 แนวตั้ง และเปิด “Background graphics” หากตัวอักษรหัวข้อจางเกินไป
-
-## FlowAccount (ออกบิลจากสัญญา)
-
-แอปสร้างคำสั่งภาษาไทยให้ [FlowAccount AI Connector](https://flowaccount.com/help-center/category/ai-connector-mcp/flowaccount-connector-in-claude) สร้างเอกสารบัญชีจากสัญญาที่กรอกไว้
-
-### ใช้กับ Claude (แนะนำ — ไม่ต้องใส่รหัส API)
-
-1. เปิด [Claude.ai](https://claude.ai) ไปที่ **Settings → Connectors → Add custom connector**
-2. ใส่ URL ของ MCP server: `https://mcp.flowaccount.com/mcp`
-3. ล็อกอินบัญชี FlowAccount แล้วเลือกบริษัท **สั่งการ คลีน**
-4. ในแอปนี้กด **ตัวอย่าง** หรือกรอกสัญญาให้ครบ แล้วเลือก ใบเสนอราคาทั้งสัญญา หรือ ใบวางบิลรายเดือน
-5. กด **คัดลอกคำสั่งไป Claude** แล้ววางในแชท Claude
-
-Claude จะสร้างเอกสารใหม่ได้ แต่ยังแก้ไขหรือลบเอกสารเก่าไม่ได้ ควรเปิดดูใน FlowAccount อีกครั้งก่อนส่งลูกค้า
-
-### ใช้ Open API โดยตรง (ไม่บังคับ)
-
-สร้างแอปใน FlowAccount Developer Portal แล้วใส่ค่าในไฟล์ `.env.local` ของเครื่องคุณ:
-
-```bash
-FLOWACCOUNT_CLIENT_ID=your_client_id
-FLOWACCOUNT_CLIENT_SECRET=your_client_secret
-FLOWACCOUNT_API_BASE=https://openapi.flowaccount.com/test
-```
-
-เมื่อรันเซิร์ฟเวอร์ใหม่ ปุ่ม **สร้างใน FlowAccount** จะยิงสร้างใบเสนอราคาหรือใบวางบิลให้เอง ถ้ายังไม่มีรหัส แอปจะบอกให้ใช้คำสั่ง Claude แทน ไม่ได้บล็อกการใช้งาน
 
 ## หมายเหตุ
 
