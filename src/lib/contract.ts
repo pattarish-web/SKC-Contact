@@ -605,7 +605,7 @@ export function buildSampleInputs(contractNo?: string): ContractInputs {
   const start = today;
   const months = 12;
   return emptyInputs({
-    contract_no: contractNo || nextContractNo(),
+    contract_no: contractNo || peekNextContractNo(),
     contract_date: today,
     client_name: "บริษัท ตัวอย่าง พลาซ่า จำกัด",
     client_address:
@@ -840,23 +840,57 @@ export function isModernContractNo(value: string): boolean {
   return /^SC-\d{4}-\d{2}-\d{3}$/.test(value.trim());
 }
 
-function syncSeqFromContractNo(value: string) {
-  const match = /^SC-(\d{4})-(\d{2})-(\d+)$/.exec(value.trim());
-  if (!match) return;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const seq = Number(match[3]);
-  const current = currentYearMonth();
-  if (year !== current.year || month !== current.month) return;
-  const state = readSeqState();
-  if (seq > state.seq) {
-    writeSeqState({ year, month, seq });
+export function parseContractSeq(
+  value: string
+): { year: number; month: number; seq: number } | null {
+  const modern = /^SC-(\d{4})-(\d{2})-(\d+)$/.exec(value.trim());
+  if (modern) {
+    return {
+      year: Number(modern[1]),
+      month: Number(modern[2]),
+      seq: Number(modern[3]),
+    };
   }
+  const legacy = /^SC-(\d{4})-(\d{1,3})$/.exec(value.trim());
+  if (legacy) {
+    return {
+      year: Number(legacy[1]),
+      month: currentYearMonth().month,
+      seq: Number(legacy[2]),
+    };
+  }
+  return null;
+}
+
+/** Highest sequence among saved contract numbers for a year/month (0 if none). */
+export function maxSavedSeq(
+  savedNos: readonly string[],
+  year: number,
+  month: number
+): number {
+  let max = 0;
+  for (const raw of savedNos) {
+    const parsed = parseContractSeq(raw);
+    if (!parsed) continue;
+    if (parsed.year === year && parsed.month === month) {
+      max = Math.max(max, parsed.seq);
+    }
+  }
+  return max;
+}
+
+/** Align local counter to saved contracts only (ignores burned draft numbers). */
+export function reconcileSeqFromSaved(savedNos: readonly string[]): SeqState {
+  const current = currentYearMonth();
+  const seq = maxSavedSeq(savedNos, current.year, current.month);
+  const next = { year: current.year, month: current.month, seq };
+  writeSeqState(next);
+  return next;
 }
 
 /**
  * Upgrade legacy SC-YYYY-NNN → SC-YYYY-MM-NNN using contract/create month.
- * Leaves modern numbers unchanged.
+ * Leaves modern numbers unchanged. Does not advance the sequence counter.
  */
 export function normalizeContractNo(
   value: string,
@@ -864,60 +898,53 @@ export function normalizeContractNo(
 ): string {
   const trimmed = value.trim();
   if (!trimmed) return trimmed;
-  if (isModernContractNo(trimmed)) {
-    syncSeqFromContractNo(trimmed);
-    return trimmed;
-  }
+  if (isModernContractNo(trimmed)) return trimmed;
   const legacy = /^SC-(\d{4})-(\d{1,3})$/.exec(trimmed);
   if (legacy) {
     const year = Number(legacy[1]);
     const seq = Number(legacy[2]);
     const month = monthFromDateISO(dateISO);
-    const next = formatContractNo(year, month, seq);
-    syncSeqFromContractNo(next);
-    return next;
+    return formatContractNo(year, month, seq);
   }
   return trimmed;
 }
 
-export function nextContractNo(existing?: string): string {
-  const state = readSeqState();
-  let seq = state.seq;
-  const match = existing?.match(/^SC-(\d{4})-(\d{2})-(\d+)$/);
-  if (
-    match &&
-    Number(match[1]) === state.year &&
-    Number(match[2]) === state.month
-  ) {
-    seq = Math.max(seq, Number(match[3]));
-  }
-  // Old SC-YYYY-NNN (no month) within the same Buddhist year.
-  const legacy = existing?.match(/^SC-(\d{4})-(\d+)$/);
-  if (legacy && Number(legacy[1]) === state.year && !match) {
-    seq = Math.max(seq, Number(legacy[2]));
-  }
-  seq += 1;
-  writeSeqState({ year: state.year, month: state.month, seq });
-  return formatContractNo(state.year, state.month, seq);
-}
-
-export function peekNextContractNo(dateISO?: string): string {
-  const state = readSeqState();
-  const year = dateISO ? yearFromDateISO(dateISO) : state.year;
-  const month = dateISO ? monthFromDateISO(dateISO) : state.month;
-  const seq =
-    year === state.year && month === state.month ? state.seq + 1 : 1;
+/**
+ * Preview next number from saved contracts only — does not consume a sequence.
+ * Pass savedNos from the library so drafts never skip ahead of unrecorded numbers.
+ */
+export function peekNextContractNo(
+  dateISO?: string,
+  savedNos: readonly string[] = []
+): string {
+  const year = dateISO ? yearFromDateISO(dateISO) : currentYearMonth().year;
+  const month = dateISO ? monthFromDateISO(dateISO) : currentYearMonth().month;
+  const seq = maxSavedSeq(savedNos, year, month) + 1;
   return formatContractNo(year, month, seq);
 }
 
-export function allocateContractNo(dateISO?: string): string {
-  const current = currentYearMonth();
-  const year = dateISO ? yearFromDateISO(dateISO) : current.year;
-  const month = dateISO ? monthFromDateISO(dateISO) : current.month;
-  if (year === current.year && month === current.month) {
-    return nextContractNo();
+/**
+ * Commit the next sequence for a newly saved contract.
+ * Call only when persisting — not when opening a draft or previewing.
+ */
+export function allocateContractNo(
+  dateISO?: string,
+  savedNos: readonly string[] = []
+): string {
+  const next = peekNextContractNo(dateISO, savedNos);
+  const parsed = parseContractSeq(next);
+  if (parsed) {
+    writeSeqState({
+      year: parsed.year,
+      month: parsed.month,
+      seq: parsed.seq,
+    });
   }
-  // Different month/year than "now": start/continue from stored if matching, else 1.
-  // For simplicity allocate from current month clock when creating fresh numbers.
-  return nextContractNo();
+  return next;
+}
+
+/** @deprecated use allocateContractNo(dateISO, savedNos) */
+export function nextContractNo(existing?: string): string {
+  const nos = existing ? [existing] : [];
+  return allocateContractNo(undefined, nos);
 }

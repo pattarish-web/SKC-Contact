@@ -8,10 +8,12 @@ import {
   formatQuantityPhrase,
   getConsumableKind,
   isQtyCompatibleWithKind,
+  maxSavedSeq,
   missingRequiredFields,
   normalizeContractNo,
   normalizeSowFields,
   normalizeStaffRoles,
+  peekNextContractNo,
 } from "./contract";
 import {
   bahtText,
@@ -191,6 +193,18 @@ const sow = normalizeSowFields({
 assert.equal(sow.sow_tools, "ไม้กวาด ถังน้ำ");
 assert.match(DEFAULT_SOW_ELECTRICAL, /เครื่องดูดฝุ่น/);
 assert.match(DEFAULT_SOW_SHARED_MATERIALS, /น้ำยา/);
+
+assert.equal(maxSavedSeq(["SC-2569-09-010", "SC-2569-09-013"], 2569, 9), 13);
+assert.equal(maxSavedSeq([], 2569, 9), 0);
+assert.equal(
+  peekNextContractNo("2026-09-07", ["SC-2569-09-010", "SC-2569-09-013"]),
+  "SC-2569-09-014"
+);
+assert.equal(peekNextContractNo("2026-09-07", []), "SC-2569-09-001");
+assert.equal(
+  peekNextContractNo("2026-09-07", ["SC-2569-09-010"]),
+  peekNextContractNo("2026-09-07", ["SC-2569-09-010"])
+);
 
 const incomplete = emptyInputs({ client_name: "x" });
 assert.ok(missingRequiredFields(incomplete).includes("เลขที่สัญญา"));

@@ -7,11 +7,13 @@ import { ContractLibrary } from "@/components/contract-library";
 import { Button } from "@/components/ui/button";
 import { COMPANY } from "@/lib/company";
 import {
+  allocateContractNo,
   buildContractContext,
   buildSampleInputs,
   emptyInputs,
   missingRequiredFields,
-  nextContractNo,
+  peekNextContractNo,
+  reconcileSeqFromSaved,
   type ContractInputs,
 } from "@/lib/contract";
 import {
@@ -25,6 +27,7 @@ import {
   clearDraft,
   loadContractIntoDraft,
   setActiveContractId,
+  syncUnsavedDraftContractNo,
   useContractDraft,
   writePrintPayload,
 } from "@/lib/draft-store";
@@ -41,7 +44,14 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-function buildRenewalInputs(source: ContractInputs): ContractInputs {
+function savedNosOf(rows: SavedContract[]): string[] {
+  return rows.map((row) => row.inputs.contract_no).filter(Boolean);
+}
+
+function buildRenewalInputs(
+  source: ContractInputs,
+  savedNos: readonly string[]
+): ContractInputs {
   const today = todayISO();
   const months = Number(source.contract_months) || 12;
   const start = source.end_date
@@ -56,7 +66,7 @@ function buildRenewalInputs(source: ContractInputs): ContractInputs {
     : today;
   return emptyInputs({
     ...source,
-    contract_no: nextContractNo(),
+    contract_no: peekNextContractNo(today, savedNos),
     contract_date: today,
     start_date: start,
     end_date: endDateFromStart(start, months),
@@ -84,7 +94,11 @@ export function ContractApp() {
   const refreshLibrary = useCallback(async () => {
     setLibraryLoading(true);
     try {
-      setLibrary(await listContracts());
+      const rows = await listContracts();
+      const nos = savedNosOf(rows);
+      reconcileSeqFromSaved(nos);
+      syncUnsavedDraftContractNo(nos);
+      setLibrary(rows);
       setLibraryError(null);
     } catch {
       setLibraryError("โหลดคลังสัญญาไม่สำเร็จ");
@@ -100,6 +114,9 @@ export function ContractApp() {
         try {
           const rows = await listContracts();
           if (!cancelled) {
+            const nos = savedNosOf(rows);
+            reconcileSeqFromSaved(nos);
+            syncUnsavedDraftContractNo(nos);
             setLibrary(rows);
             setLibraryError(null);
             setLibraryLoading(false);
@@ -155,7 +172,7 @@ export function ContractApp() {
     if (!window.confirm("ล้างข้อมูลที่กรอกทั้งหมด และเริ่มสัญญาใหม่?")) {
       return;
     }
-    clearDraft();
+    clearDraft(savedNosOf(library));
     setSaveMessage(null);
   }
 
@@ -166,7 +183,14 @@ export function ContractApp() {
     ) {
       return;
     }
-    setInputs(buildSampleInputs());
+    const nos = savedNosOf(library);
+    setInputs(
+      buildSampleInputs(
+        peekNextContractNo(inputs.contract_date || todayISO(), nos)
+      )
+    );
+    setActiveContractId(null);
+    setSaveMessage(null);
     setPane("preview");
   }
 
@@ -192,7 +216,17 @@ export function ContractApp() {
       return;
     }
     try {
-      const saved = await saveContract(inputs, { id: activeId });
+      const latest = await listContracts();
+      const nos = savedNosOf(latest);
+      const payload =
+        activeId != null
+          ? inputs
+          : {
+              ...inputs,
+              contract_no: allocateContractNo(inputs.contract_date, nos),
+            };
+      const saved = await saveContract(payload, { id: activeId });
+      setInputs(saved.inputs);
       setActiveContractId(saved.id);
       setSaveMessage(
         `บันทึกแล้ว · ${saved.inputs.contract_no} · ${new Date(
@@ -221,7 +255,8 @@ export function ContractApp() {
   async function removeSaved(id: string) {
     if (!window.confirm("ลบสัญญานี้และเอกสารแนบทั้งหมด?")) return;
     await deleteContract(id);
-    if (activeId === id) clearDraft();
+    const remaining = library.filter((r) => r.id !== id);
+    if (activeId === id) clearDraft(savedNosOf(remaining));
     await refreshLibrary();
   }
 
@@ -233,8 +268,14 @@ export function ContractApp() {
       return;
     }
     try {
-      const renewal = buildRenewalInputs(row.inputs);
-      const saved = await saveContract(renewal);
+      const latest = await listContracts();
+      const nos = savedNosOf(latest);
+      const renewal = buildRenewalInputs(row.inputs, nos);
+      const payload = {
+        ...renewal,
+        contract_no: allocateContractNo(renewal.contract_date, nos),
+      };
+      const saved = await saveContract(payload);
       loadContractIntoDraft(saved.id, saved.inputs);
       await refreshLibrary();
       setView("editor");
@@ -250,7 +291,7 @@ export function ContractApp() {
   }
 
   function startNew() {
-    clearDraft();
+    clearDraft(savedNosOf(library));
     setView("editor");
     setPane("form");
     setSaveMessage(null);
@@ -399,6 +440,7 @@ export function ContractApp() {
               onFillSample={fillSample}
               onReset={resetForm}
               activeId={activeId}
+              savedContractNos={savedNosOf(library)}
             />
           </aside>
 

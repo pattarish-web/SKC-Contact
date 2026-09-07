@@ -3,7 +3,7 @@
 import {
   ACTIVE_CONTRACT_ID_KEY,
   emptyInputs,
-  nextContractNo,
+  peekNextContractNo,
   STORAGE_KEY,
   type ContractInputs,
 } from "@/lib/contract";
@@ -29,11 +29,11 @@ let snapshot: DraftSnapshot = SERVER_SNAPSHOT;
 
 const listeners = new Set<() => void>();
 
-function freshInputs(): ContractInputs {
+function freshInputs(savedNos: readonly string[] = []): ContractInputs {
   const today = todayISO();
   const months = 12;
   return emptyInputs({
-    contract_no: nextContractNo(),
+    contract_no: peekNextContractNo(today, savedNos),
     contract_date: today,
     start_date: today,
     contract_months: String(months),
@@ -130,13 +130,27 @@ export function setActiveContractId(id: string | null) {
   });
 }
 
-export function clearDraft() {
+export function clearDraft(savedNos: readonly string[] = []) {
   persist({
-    inputs: freshInputs(),
+    inputs: freshInputs(savedNos),
     activeId: null,
     hydrated: true,
     storageError: null,
   });
+}
+
+/** Refresh provisional number on an unsaved draft from the saved library. */
+export function syncUnsavedDraftContractNo(savedNos: readonly string[]) {
+  if (snapshot.activeId) return;
+  const peek = peekNextContractNo(snapshot.inputs.contract_date, savedNos);
+  if (snapshot.inputs.contract_no === peek) return;
+  writeDraft(
+    {
+      ...snapshot.inputs,
+      contract_no: peek,
+    },
+    null
+  );
 }
 
 export function loadContractIntoDraft(

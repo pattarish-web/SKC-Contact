@@ -17,7 +17,7 @@ import {
   POSITION_PRESETS,
   WORK_DAY_PRESETS,
   WORK_HOUR_PRESETS,
-  allocateContractNo,
+  peekNextContractNo,
 } from "@/lib/contract";
 import { formatMoney } from "@/lib/thai";
 import { RotateCcw, Sparkles } from "lucide-react";
@@ -51,6 +51,7 @@ export function ContractForm({
   onFillSample,
   onReset,
   activeId,
+  savedContractNos = [],
 }: {
   inputs: ContractInputs;
   ctx: ContractContext;
@@ -61,6 +62,8 @@ export function ContractForm({
   onFillSample?: () => void;
   onReset?: () => void;
   activeId?: string | null;
+  /** Used to preview the next number from saved contracts only. */
+  savedContractNos?: readonly string[];
 }) {
   return (
     <div className="space-y-6">
@@ -113,9 +116,12 @@ export function ContractForm({
                 size="sm"
                 className="shrink-0"
                 onClick={() =>
-                  onChange("contract_no", allocateContractNo(inputs.contract_date))
+                  onChange(
+                    "contract_no",
+                    peekNextContractNo(inputs.contract_date, savedContractNos)
+                  )
                 }
-                title="สร้างเลขที่ใหม่ตามรูปแบบ SC-ปี-เดือน-ลำดับ"
+                title="แสดงเลขถัดไปจากสัญญาที่บันทึกแล้ว (ยังไม่จองจนกว่าจะกดบันทึก)"
               >
                 เลขใหม่
               </Button>
