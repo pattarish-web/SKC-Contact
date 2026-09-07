@@ -30,7 +30,11 @@ npm run dev -- --port 43123
 
 **https://pattarish-web.github.io/SKC-Contact/**
 
-ทุกครั้งที่ push ขึ้น `main` ระบบจะ build และอัปเดตหน้า GitHub Pages อัตโนมัติ
+อัปเดตหน้าเว็บด้วยคำสั่ง:
+
+```bash
+npm run deploy:pages
+```
 
 สร้างไฟล์พร้อมใช้งานสำหรับขึ้นเซิร์ฟเวอร์:
 
