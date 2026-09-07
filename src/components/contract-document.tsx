@@ -129,7 +129,7 @@ export function ContractDocument({ ctx }: { ctx: ContractContext }) {
         </p>
         <p className="contract-indent">
           {COMPANY.name} (เลขทะเบียนนิติบุคคล : {COMPANY.registrationNo})
-          สำนักงานตั้งอยู่{COMPANY.address} ซึ่งต่อไปในสัญญานี้จะเรียกว่า
+          สำนักงานตั้งอยู่ {COMPANY.address} ซึ่งต่อไปในสัญญานี้จะเรียกว่า
           “ผู้รับจ้าง” อีกฝ่ายหนึ่ง
         </p>
 

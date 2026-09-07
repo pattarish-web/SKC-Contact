@@ -1,4 +1,4 @@
-import { bahtText, formatMoney } from "./thai";
+import { bahtText, formatMoney, round2, todayISO, endDateFromStart } from "./thai";
 
 export type ContractInputs = {
   contract_no: string;
@@ -51,6 +51,8 @@ export type ContractContext = {
 };
 
 export const STORAGE_KEY = "sanggan-clean-contract-draft";
+export const CONTRACT_SEQ_KEY = "sanggan-clean-contract-seq";
+export const ACTIVE_CONTRACT_ID_KEY = "sanggan-clean-active-contract-id";
 
 export const WORK_DAY_PRESETS = [
   "จันทร์-อาทิตย์",
@@ -96,27 +98,32 @@ export function emptyInputs(partial: Partial<ContractInputs> = {}): ContractInpu
   };
 }
 
-export const SAMPLE_INPUTS: ContractInputs = {
-  contract_no: "SC-2569-001",
-  contract_date: "2026-09-07",
-  client_name: "บริษัท ตัวอย่าง พลาซ่า จำกัด",
-  client_address:
-    "88 ถนนพระรามที่ 4 แขวงสุริยวงศ์ เขตบางรัก กรุงเทพมหานคร 10500",
-  client_authorized: "สมชาย ใจดี",
-  client_position: "กรรมการผู้มีอำนาจ",
-  start_date: "2026-10-01",
-  end_date: "2027-09-30",
-  contract_months: "12",
-  include_equipment: true,
-  staff_count: "2",
-  work_days: "จันทร์-อาทิตย์",
-  work_hours: "08.00-17.00 น.",
-  price_per_head: "15000",
-  ot_rate: "109",
-  contractor_authorized: "",
-  witness_client: "",
-  witness_contractor: "",
-};
+export function buildSampleInputs(contractNo?: string): ContractInputs {
+  const today = todayISO();
+  const start = today;
+  const months = 12;
+  return emptyInputs({
+    contract_no: contractNo || nextContractNo(),
+    contract_date: today,
+    client_name: "บริษัท ตัวอย่าง พลาซ่า จำกัด",
+    client_address:
+      "88 ถนนพระรามที่ 4 แขวงสุริยวงศ์ เขตบางรัก กรุงเทพมหานคร 10500",
+    client_authorized: "สมชาย ใจดี",
+    client_position: "กรรมการผู้มีอำนาจ",
+    start_date: start,
+    end_date: endDateFromStart(start, months),
+    contract_months: String(months),
+    include_equipment: true,
+    staff_count: "2",
+    work_days: "จันทร์-อาทิตย์",
+    work_hours: "08.00-17.00 น.",
+    price_per_head: "15000",
+    ot_rate: "109",
+  });
+}
+
+/** @deprecated use buildSampleInputs() */
+export const SAMPLE_INPUTS = buildSampleInputs("SC-2569-001");
 
 export const EQUIPMENT_INCLUDED =
   "ค่าจ้างตามสัญญานี้รวมค่าแรงพนักงาน ค่าอุปกรณ์เครื่องมือเครื่องใช้น้ำยาทำความสะอาดต่างๆ และอื่นๆ สำหรับใช้ในการทำความสะอาดแล้ว";
@@ -131,13 +138,13 @@ function parseNumber(value: string): number {
 
 export function buildContractContext(inputs: ContractInputs): ContractContext {
   const staff_count = Math.max(0, Math.trunc(parseNumber(inputs.staff_count)));
-  const price_per_head = parseNumber(inputs.price_per_head);
+  const price_per_head = round2(parseNumber(inputs.price_per_head));
   const months = Math.max(0, Math.trunc(parseNumber(inputs.contract_months)));
 
-  const monthly_total_raw = staff_count * price_per_head;
-  const total_contract_price_raw = monthly_total_raw * months;
-  const vat_amount = total_contract_price_raw * 0.07;
-  const total_with_vat = total_contract_price_raw + vat_amount;
+  const monthly_total_raw = round2(staff_count * price_per_head);
+  const total_contract_price_raw = round2(monthly_total_raw * months);
+  const vat_amount = round2(total_contract_price_raw * 0.07);
+  const total_with_vat = round2(total_contract_price_raw + vat_amount);
 
   const equipment_clause = inputs.include_equipment
     ? EQUIPMENT_INCLUDED
@@ -182,6 +189,17 @@ export function missingRequiredFields(inputs: ContractInputs): string[] {
   if (!inputs.client_authorized.trim()) missing.push("ผู้มีอำนาจลงนาม");
   if (!inputs.start_date) missing.push("วันเริ่มสัญญา");
   if (!inputs.end_date) missing.push("วันสิ้นสุดสัญญา");
+  if (
+    inputs.start_date &&
+    inputs.end_date &&
+    inputs.end_date < inputs.start_date
+  ) {
+    missing.push("วันสิ้นสุดต้องไม่ก่อนวันเริ่ม");
+  }
+  const months = parseNumber(inputs.contract_months);
+  if (!inputs.contract_months.trim() || months < 1) {
+    missing.push("จำนวนเดือน");
+  }
   if (!inputs.staff_count.trim() || parseNumber(inputs.staff_count) <= 0) {
     missing.push("จำนวนพนักงาน");
   }
@@ -191,12 +209,45 @@ export function missingRequiredFields(inputs: ContractInputs): string[] {
   return missing;
 }
 
+function readSeq(year: number): number {
+  if (typeof window === "undefined") return 0;
+  try {
+    const raw = window.localStorage.getItem(CONTRACT_SEQ_KEY);
+    if (!raw) return 0;
+    const parsed = JSON.parse(raw) as { year?: number; seq?: number };
+    if (parsed.year === year && typeof parsed.seq === "number") return parsed.seq;
+    return 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writeSeq(year: number, seq: number) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      CONTRACT_SEQ_KEY,
+      JSON.stringify({ year, seq })
+    );
+  } catch {
+    // ignore quota
+  }
+}
+
 export function nextContractNo(existing?: string): string {
   const year = new Date().getFullYear() + 543;
+  let seq = readSeq(year);
   const match = existing?.match(/^SC-(\d{4})-(\d+)$/);
   if (match && Number(match[1]) === year) {
-    const next = Number(match[2]) + 1;
-    return `SC-${year}-${String(next).padStart(3, "0")}`;
+    seq = Math.max(seq, Number(match[2]));
   }
-  return `SC-${year}-001`;
+  seq += 1;
+  writeSeq(year, seq);
+  return `SC-${year}-${String(seq).padStart(3, "0")}`;
+}
+
+export function peekNextContractNo(): string {
+  const year = new Date().getFullYear() + 543;
+  const seq = readSeq(year) + 1;
+  return `SC-${year}-${String(seq).padStart(3, "0")}`;
 }

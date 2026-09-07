@@ -85,12 +85,20 @@ export function num2wordsTh(value: number): string {
   return groups.join("");
 }
 
+export function round2(amount: number): number {
+  return Math.round((amount + Number.EPSILON) * 100) / 100;
+}
+
 export function bahtText(amount: number): string {
-  return num2wordsTh(Math.trunc(amount)) + "บาทถ้วน";
+  const rounded = round2(amount);
+  const baht = Math.trunc(rounded);
+  const satang = Math.round((rounded - baht) * 100);
+  if (satang === 0) return num2wordsTh(baht) + "บาทถ้วน";
+  return `${num2wordsTh(baht)}บาท${num2wordsTh(satang)}สตางค์`;
 }
 
 export function formatMoney(amount: number): string {
-  return amount.toLocaleString("en-US", {
+  return round2(amount).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -135,21 +143,32 @@ export function todayISO(): string {
   return toISODate(new Date());
 }
 
-/** End date = start + months − 1 day (e.g. 1 Jan + 12 months → 31 Dec). */
+function daysInMonth(year: number, monthIndex: number): number {
+  return new Date(year, monthIndex + 1, 0).getDate();
+}
+
+/** End date = start + months − 1 day, without month-end overflow. */
 export function endDateFromStart(startISO: string, months: number): string {
   const start = parseISODate(startISO);
   if (!start || !Number.isFinite(months) || months <= 0) return "";
-  const end = new Date(start);
-  end.setMonth(end.getMonth() + months);
-  end.setDate(end.getDate() - 1);
-  return toISODate(end);
+
+  const totalMonths = start.getFullYear() * 12 + start.getMonth() + months;
+  const year = Math.floor(totalMonths / 12);
+  const monthIndex = totalMonths % 12;
+  const day = Math.min(start.getDate(), daysInMonth(year, monthIndex));
+  const endMonthSameDay = new Date(year, monthIndex, day);
+  endMonthSameDay.setDate(endMonthSameDay.getDate() - 1);
+  return toISODate(endMonthSameDay);
 }
 
-/** Inclusive calendar span rounded to whole months, minimum 1. */
-export function monthsFromRange(startISO: string, endISO: string): number {
+/** Inclusive calendar span in whole months, or null if invalid/inverted. */
+export function monthsFromRange(
+  startISO: string,
+  endISO: string
+): number | null {
   const start = parseISODate(startISO);
   const end = parseISODate(endISO);
-  if (!start || !end || end < start) return 1;
+  if (!start || !end || end < start) return null;
   const endPlusOne = new Date(end);
   endPlusOne.setDate(endPlusOne.getDate() + 1);
   let months =

@@ -223,7 +223,6 @@
     margin: 0;
     padding: 0;
     box-shadow: none;
-    break-inside: avoid;
   }
 
   .contract-page + .contract-page {

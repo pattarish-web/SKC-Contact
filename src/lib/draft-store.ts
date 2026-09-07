@@ -1,15 +1,29 @@
 "use client";
 
 import {
+  ACTIVE_CONTRACT_ID_KEY,
   emptyInputs,
   nextContractNo,
   STORAGE_KEY,
   type ContractInputs,
 } from "@/lib/contract";
 import { endDateFromStart, todayISO } from "@/lib/thai";
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 
-let snapshot: ContractInputs | null = null;
+type DraftSnapshot = {
+  inputs: ContractInputs;
+  activeId: string | null;
+  hydrated: boolean;
+  storageError: string | null;
+};
+
+let snapshot: DraftSnapshot = {
+  inputs: emptyInputs(),
+  activeId: null,
+  hydrated: false,
+  storageError: null,
+};
+
 const listeners = new Set<() => void>();
 
 function freshInputs(): ContractInputs {
@@ -24,39 +38,27 @@ function freshInputs(): ContractInputs {
   });
 }
 
-function compact(parsed: Partial<ContractInputs>): Partial<ContractInputs> {
-  const next: Partial<ContractInputs> = {};
-  (Object.keys(parsed) as Array<keyof ContractInputs>).forEach((key) => {
-    const value = parsed[key];
-    if (value === "" || value === undefined || value === null) return;
-    (next as Record<string, unknown>)[key] = value;
-  });
-  return next;
-}
-
-function readStorage(): ContractInputs {
+function readStorage(): Omit<DraftSnapshot, "hydrated"> {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return freshInputs();
+    const activeId = window.localStorage.getItem(ACTIVE_CONTRACT_ID_KEY);
+    if (!raw) {
+      return { inputs: freshInputs(), activeId: null, storageError: null };
+    }
     const parsed = JSON.parse(raw) as Partial<ContractInputs>;
-    return emptyInputs({ ...freshInputs(), ...compact(parsed) });
+    // Only fill missing keys — keep intentional empty strings.
+    return {
+      inputs: emptyInputs({ ...parsed }),
+      activeId: activeId || null,
+      storageError: null,
+    };
   } catch {
-    return freshInputs();
+    return {
+      inputs: freshInputs(),
+      activeId: null,
+      storageError: "โหลดร่างสัญญาไม่สำเร็จ",
+    };
   }
-}
-
-const SERVER_SNAPSHOT = emptyInputs();
-
-function getSnapshot(): ContractInputs {
-  if (typeof window === "undefined") {
-    return SERVER_SNAPSHOT;
-  }
-  if (!snapshot) snapshot = readStorage();
-  return snapshot;
-}
-
-function getServerSnapshot(): ContractInputs {
-  return SERVER_SNAPSHOT;
 }
 
 function emit() {
@@ -68,37 +70,148 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-export function writeDraft(next: ContractInputs) {
+function getSnapshot(): DraftSnapshot {
+  return snapshot;
+}
+
+function getServerSnapshot(): DraftSnapshot {
+  return {
+    inputs: emptyInputs(),
+    activeId: null,
+    hydrated: false,
+    storageError: null,
+  };
+}
+
+function persist(next: DraftSnapshot) {
   snapshot = next;
   if (typeof window !== "undefined") {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next.inputs));
+      if (next.activeId) {
+        window.localStorage.setItem(ACTIVE_CONTRACT_ID_KEY, next.activeId);
+      } else {
+        window.localStorage.removeItem(ACTIVE_CONTRACT_ID_KEY);
+      }
+      snapshot = { ...next, storageError: null };
+    } catch {
+      snapshot = {
+        ...next,
+        storageError: "บันทึกร่างไม่สำเร็จ (พื้นที่เบราว์เซอร์อาจเต็ม)",
+      };
+    }
   }
   emit();
+}
+
+export function hydrateDraft() {
+  if (typeof window === "undefined") return;
+  const loaded = readStorage();
+  snapshot = { ...loaded, hydrated: true };
+  emit();
+}
+
+export function writeDraft(
+  next: ContractInputs,
+  activeId: string | null = snapshot.activeId
+) {
+  persist({
+    inputs: next,
+    activeId,
+    hydrated: true,
+    storageError: null,
+  });
+}
+
+export function setActiveContractId(id: string | null) {
+  persist({
+    ...snapshot,
+    activeId: id,
+    hydrated: true,
+  });
 }
 
 export function clearDraft() {
-  snapshot = freshInputs();
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+  persist({
+    inputs: freshInputs(),
+    activeId: null,
+    hydrated: true,
+    storageError: null,
+  });
+}
+
+export function loadContractIntoDraft(id: string, inputs: ContractInputs) {
+  persist({
+    inputs: emptyInputs({ ...inputs }),
+    activeId: id,
+    hydrated: true,
+    storageError: null,
+  });
+}
+
+const PRINT_PAYLOAD_KEY = "sanggan-clean-contract-print";
+
+export function writePrintPayload(inputs: ContractInputs) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(PRINT_PAYLOAD_KEY, JSON.stringify(inputs));
+  } catch {
+    // ignore quota / private mode
   }
-  emit();
+}
+
+export function readPrintPayload(): ContractInputs | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(PRINT_PAYLOAD_KEY);
+    if (!raw) {
+      const draft = window.localStorage.getItem(STORAGE_KEY);
+      if (!draft) return null;
+      return emptyInputs(JSON.parse(draft) as Partial<ContractInputs>);
+    }
+    return emptyInputs(JSON.parse(raw) as Partial<ContractInputs>);
+  } catch {
+    return null;
+  }
 }
 
 export function useContractDraft() {
-  const inputs = useSyncExternalStore(
+  const state = useSyncExternalStore(
     subscribe,
     getSnapshot,
     getServerSnapshot
   );
 
+  useEffect(() => {
+    if (!snapshot.hydrated) hydrateDraft();
+
+    function onStorage(event: StorageEvent) {
+      if (event.key !== STORAGE_KEY && event.key !== ACTIVE_CONTRACT_ID_KEY) {
+        return;
+      }
+      const loaded = readStorage();
+      snapshot = { ...loaded, hydrated: true };
+      emit();
+    }
+
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   const setInputs = useCallback(
     (updater: ContractInputs | ((prev: ContractInputs) => ContractInputs)) => {
-      const prev = getSnapshot();
+      const prev = snapshot.inputs;
       const next = typeof updater === "function" ? updater(prev) : updater;
-      writeDraft(next);
+      writeDraft(next, snapshot.activeId);
     },
     []
   );
 
-  return [inputs, setInputs] as const;
+  return {
+    inputs: state.inputs,
+    setInputs,
+    activeId: state.activeId,
+    hydrated: state.hydrated,
+    storageError: state.storageError,
+  };
 }

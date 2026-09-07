@@ -1,5 +1,6 @@
 "use client";
 
+import { AttachmentPanel } from "@/components/attachment-panel";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -68,6 +69,7 @@ export function ContractForm({
   onChange,
   onFillSample,
   onReset,
+  activeId,
 }: {
   inputs: ContractInputs;
   ctx: ContractContext;
@@ -77,6 +79,7 @@ export function ContractForm({
   ) => void;
   onFillSample?: () => void;
   onReset?: () => void;
+  activeId?: string | null;
 }) {
   return (
     <div className="space-y-6">
@@ -373,6 +376,8 @@ export function ContractForm({
           </p>
         ) : null}
       </section>
+
+      <AttachmentPanel contractId={activeId ?? null} />
 
       <p className="text-center text-xs text-muted-foreground">
         ร่างสัญญาบันทึกอัตโนมัติในเบราว์เซอร์นี้
